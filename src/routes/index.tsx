@@ -328,7 +328,7 @@ function Menu() {
                 <span className="font-mono text-sm font-bold">{item.price}</span>
               </div>
               <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.desc}</p>
-              <button className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
+              <button onClick={() => addToCart(item.name)} className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
                 <Plus className="size-3" /> Add to Cart
               </button>
             </motion.div>
