@@ -70,6 +70,7 @@ function Home() {
       <Marquee />
       <Menu />
       <Offers />
+      <AiRecommendations />
       <Story />
       <Testimonials />
       <Gallery />
