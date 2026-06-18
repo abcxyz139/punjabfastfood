@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check } from "lucide-react";
+import { recommendDishes } from "@/lib/recommend.functions";
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
@@ -68,6 +70,7 @@ function Home() {
       <Marquee />
       <Menu />
       <Offers />
+      <AiRecommendations />
       <Story />
       <Testimonials />
       <Gallery />
@@ -325,7 +328,7 @@ function Menu() {
                 <span className="font-mono text-sm font-bold">{item.price}</span>
               </div>
               <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.desc}</p>
-              <button className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
+              <button onClick={() => addToCart(item.name)} className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
                 <Plus className="size-3" /> Add to Cart
               </button>
             </motion.div>
@@ -716,5 +719,222 @@ function Footer() {
         <p>Designed for Flavor.</p>
       </div>
     </footer>
+  );
+}
+
+// ---------- AI Recommendations ----------
+
+const CART_KEY = "pff:cart";
+const PAST_KEY = "pff:past";
+
+function readList(key: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(key) || "[]");
+  } catch {
+    return [];
+  }
+}
+function writeList(key: string, v: string[]) {
+  localStorage.setItem(key, JSON.stringify(v));
+  window.dispatchEvent(new CustomEvent("pff:storage"));
+}
+function addToCart(name: string) {
+  const c = readList(CART_KEY);
+  if (!c.includes(name)) c.push(name);
+  writeList(CART_KEY, c);
+}
+
+function useCartState() {
+  const [cart, setCart] = useState<string[]>([]);
+  const [past, setPast] = useState<string[]>([]);
+  useEffect(() => {
+    const sync = () => {
+      setCart(readList(CART_KEY));
+      setPast(readList(PAST_KEY));
+    };
+    sync();
+    window.addEventListener("pff:storage", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("pff:storage", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return { cart, past, setCart, setPast };
+}
+
+type Pick = { name: string; reason: string };
+
+function AiRecommendations() {
+  const { cart, past } = useCartState();
+  const [picks, setPicks] = useState<Pick[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const recommend = useServerFn(recommendDishes);
+
+  const getPicks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await recommend({
+        data: {
+          cart,
+          pastOrders: past,
+          menu: MENU.map((m) => m.name),
+        },
+      });
+      setPicks(result.picks);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }, [cart, past, recommend]);
+
+  const moveCartToPast = () => {
+    const merged = Array.from(new Set([...past, ...cart]));
+    writeList(PAST_KEY, merged.slice(-30));
+    writeList(CART_KEY, []);
+  };
+  const removeFromCart = (n: string) => writeList(CART_KEY, cart.filter((x) => x !== n));
+  const removeFromPast = (n: string) => writeList(PAST_KEY, past.filter((x) => x !== n));
+  const lookup = (n: string) => MENU.find((m) => m.name === n);
+
+  return (
+    <section id="ai" className="relative py-24 md:py-32 px-6 bg-gradient-to-b from-white via-brand-cream to-white overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, #C8102E 1px, transparent 1px), radial-gradient(circle at 80% 60%, #F39200 1px, transparent 1px)", backgroundSize: "40px 40px, 60px 60px" }} />
+
+      <div className="max-w-7xl mx-auto relative">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-12"
+        >
+          <div className="font-mono text-brand-red text-xs font-bold uppercase tracking-[0.3em] mb-3 flex items-center justify-center gap-2">
+            <Sparkles className="size-3" /> — AI Chef's Picks
+          </div>
+          <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-none">
+            Made <span className="text-brand-red">For You</span>
+          </h2>
+          <p className="mt-4 text-sm md:text-base text-brand-black/60 max-w-xl mx-auto">
+            Our AI chef studies your cart and past orders to suggest the dishes you'll obsess over next.
+          </p>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-4 mb-8">
+          <CartPanel
+            title="Your Cart"
+            empty="Add items from the menu above to personalize your picks."
+            items={cart}
+            onRemove={removeFromCart}
+            accent="bg-brand-red"
+          />
+          <CartPanel
+            title="Past Orders"
+            empty="No order history yet — try a few items then mark them as ordered."
+            items={past}
+            onRemove={removeFromPast}
+            accent="bg-brand-gold text-brand-black"
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
+          <button
+            onClick={getPicks}
+            disabled={loading}
+            className="group relative px-8 py-4 bg-brand-black text-white font-bold uppercase tracking-tighter overflow-hidden disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {loading ? "Cooking up picks…" : "Get AI Recommendations"}
+          </button>
+          {cart.length > 0 && (
+            <button
+              onClick={moveCartToPast}
+              className="px-6 py-4 border border-brand-black/20 hover:border-brand-black font-bold uppercase tracking-tighter text-xs flex items-center justify-center gap-2"
+            >
+              <Check className="size-4" /> Mark Cart as Ordered
+            </button>
+          )}
+        </div>
+
+        {error && (
+          <div className="max-w-xl mx-auto mb-8 p-4 border border-brand-red/30 bg-brand-red/5 text-brand-red text-sm font-mono text-center">
+            {error}
+          </div>
+        )}
+
+        <AnimatePresence mode="popLayout">
+          {picks.length > 0 && (
+            <motion.div
+              key="picks"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="grid md:grid-cols-3 gap-4"
+            >
+              {picks.map((p, i) => {
+                const item = lookup(p.name);
+                return (
+                  <motion.div
+                    key={p.name}
+                    initial={{ opacity: 0, y: 40, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                    className="group relative bg-white border border-brand-black/10 hover:border-brand-red transition-colors overflow-hidden"
+                  >
+                    <div className="absolute top-3 left-3 z-10 px-2 py-1 bg-brand-black text-brand-gold text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="size-2.5" /> AI Pick
+                    </div>
+                    {item && (
+                      <div className="aspect-[4/3] overflow-hidden bg-stone-100">
+                        <img src={item.img} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      </div>
+                    )}
+                    <div className="p-5">
+                      <div className="flex justify-between items-start mb-2 gap-3">
+                        <h3 className="font-display text-2xl uppercase leading-none">{p.name}</h3>
+                        {item && <span className="font-mono text-sm font-bold whitespace-nowrap">{item.price}</span>}
+                      </div>
+                      <p className="text-xs text-brand-black/60 leading-relaxed mb-5 italic">"{p.reason}"</p>
+                      <button onClick={() => addToCart(p.name)} className="w-full py-3 bg-brand-red text-white text-[10px] font-bold uppercase tracking-widest hover:bg-brand-black transition-colors flex items-center justify-center gap-2">
+                        <Plus className="size-3" /> Add to Cart
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </section>
+  );
+}
+
+function CartPanel({ title, empty, items, onRemove, accent }: { title: string; empty: string; items: string[]; onRemove: (n: string) => void; accent: string }) {
+  return (
+    <div className="border border-brand-black/10 bg-white p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.25em]">{title}</h3>
+        <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 text-white ${accent}`}>{items.length}</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-brand-black/50 leading-relaxed">{empty}</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {items.map((n) => (
+            <span key={n} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-brand-black/5 text-xs font-medium">
+              {n}
+              <button onClick={() => onRemove(n)} className="size-5 grid place-items-center rounded-full hover:bg-brand-red hover:text-white transition-colors" aria-label={`Remove ${n}`}>
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
