@@ -1,29 +1,720 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock } from "lucide-react";
+
+import heroSpice from "@/assets/hero-spice.jpg";
+import imgBurger from "@/assets/menu-burger.jpg";
+import imgPizza from "@/assets/menu-pizza.jpg";
+import imgShawarma from "@/assets/menu-shawarma.jpg";
+import imgFries from "@/assets/menu-fries.jpg";
+import imgZinger from "@/assets/menu-zinger.jpg";
+import imgWrap from "@/assets/menu-wrap.jpg";
+import lifestyle from "@/assets/lifestyle.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
+      { name: "description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
+      { property: "og:title", content: "Punjab Fast Food" },
+      { property: "og:description", content: "Taste the Real Flavor of Punjab" },
     ],
   }),
-  component: Index,
+  component: Home,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+type MenuItem = {
+  name: string;
+  price: string;
+  desc: string;
+  img: string;
+  cat: string;
+  tag?: string;
+};
+
+const MENU: MenuItem[] = [
+  { name: "Zinger Punjab", price: "$8.99", desc: "Double crispy chicken, masala mayo, achari pickles.", img: imgBurger, cat: "Burgers", tag: "Hot" },
+  { name: "Tikka Pizza", price: "$14.50", desc: "Tandoori chunks, green chilies, sourdough crust.", img: imgPizza, cat: "Pizza" },
+  { name: "Lahori Roll", price: "$7.25", desc: "Marinated chicken, mint chutney, pickled onions.", img: imgShawarma, cat: "Shawarma" },
+  { name: "Masala Fries", price: "$5.00", desc: "Double-fried, tossed in signature spice blend.", img: imgFries, cat: "Fries" },
+  { name: "Zinger Tower", price: "$10.50", desc: "Stacked golden zinger, peri sauce, slaw.", img: imgZinger, cat: "Zinger", tag: "New" },
+  { name: "Paratha Wrap", price: "$6.75", desc: "Hand-rolled paratha, spiced chicken, chutney.", img: imgWrap, cat: "Wraps" },
+  { name: "Royal Pizza XL", price: "$18.00", desc: "Extra cheese, double tandoori, jumbo size.", img: imgPizza, cat: "Pizza" },
+  { name: "Cheesy Fries Deluxe", price: "$6.50", desc: "Loaded melted cheddar, peri spice, cilantro.", img: imgFries, cat: "Fries" },
+];
+
+const CATEGORIES = ["All", "Burgers", "Pizza", "Shawarma", "Zinger", "Fries", "Wraps"];
+
+const TESTIMONIALS = [
+  { name: "Ayesha M.", quote: "The Zinger Punjab is unreal. Crispy, juicy, and that masala mayo — addictive.", rating: 5 },
+  { name: "Rohan S.", quote: "Best tikka pizza I've had outside of Amritsar. The crust alone is worth it.", rating: 5 },
+  { name: "Faisal K.", quote: "Friday night staple for the squad. Fast, fresh, and ridiculously flavorful.", rating: 5 },
+];
+
+const STATS = [
+  { num: "120K+", label: "Orders Delivered" },
+  { num: "4.9", label: "Customer Rating" },
+  { num: "24h", label: "Marination Time" },
+  { num: "100%", label: "Halal Certified" },
+];
+
+function Home() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
+      <LoadingScreen />
+      <Nav />
+      <Hero />
+      <Marquee />
+      <Menu />
+      <Offers />
+      <Story />
+      <Testimonials />
+      <Gallery />
+      <Contact />
+      <Footer />
     </div>
+  );
+}
+
+function LoadingScreen() {
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(false), 1400);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, y: "-100%" }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed inset-0 z-[100] bg-brand-black flex items-center justify-center"
+        >
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center"
+          >
+            <Flame className="size-12 text-brand-orange mx-auto mb-4 animate-pulse" />
+            <div className="font-display text-5xl uppercase tracking-tighter text-white">
+              Punjab <span className="text-brand-gold">Fast Food</span>
+            </div>
+            <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.4em] text-white/40">
+              Firing up the tandoor…
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function Nav() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", on);
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return (
+    <motion.nav
+      initial={{ y: -40, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ delay: 1.5, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 transition-all duration-300 ${
+        scrolled ? "bg-white/95 backdrop-blur-md border-b border-brand-black/5" : "bg-transparent"
+      }`}
+    >
+      <a href="#" className={`font-display text-2xl tracking-tighter uppercase transition-colors ${scrolled ? "text-brand-red" : "text-white"}`}>
+        Punjab<span className="text-brand-gold">.</span>Fast Food
+      </a>
+      <div className={`hidden md:flex gap-8 font-mono text-xs uppercase tracking-widest font-bold ${scrolled ? "text-brand-black" : "text-white"}`}>
+        {["Menu", "Offers", "Story", "Contact"].map((l) => (
+          <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-brand-orange transition-colors relative group">
+            {l}
+            <span className="absolute -bottom-1 left-0 w-0 h-px bg-brand-orange group-hover:w-full transition-all duration-300" />
+          </a>
+        ))}
+      </div>
+      <button className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
+        <ShoppingBag className="size-3.5" /> Order Now
+      </button>
+    </motion.nav>
+  );
+}
+
+function Hero() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
+  const opacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+
+  return (
+    <section ref={ref} className="relative h-screen min-h-[700px] flex flex-col items-center justify-center overflow-hidden bg-brand-black text-white">
+      <motion.div style={{ y, opacity }} className="absolute inset-0">
+        <img src={heroSpice} alt="" className="w-full h-full object-cover opacity-50" />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-black/40 via-transparent to-brand-black" />
+      </motion.div>
+
+      {/* floating glow orbs */}
+      <div className="absolute top-1/4 left-10 size-24 bg-brand-orange rounded-full mix-blend-screen blur-3xl opacity-50 spice-float" />
+      <div className="absolute bottom-1/4 right-20 size-40 bg-brand-red rounded-full mix-blend-screen blur-3xl opacity-40 spice-float" style={{ animationDelay: "2s" }} />
+      <div className="absolute top-1/3 right-1/4 size-16 bg-brand-gold rounded-full mix-blend-screen blur-2xl opacity-30 spice-float" style={{ animationDelay: "4s" }} />
+
+      <div className="relative z-10 text-center px-4 max-w-6xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.7, duration: 0.6 }}
+          className="inline-flex items-center gap-2 mb-8 px-4 py-2 border border-brand-gold/30 rounded-full font-mono text-[10px] uppercase tracking-[0.3em] text-brand-gold"
+        >
+          <span className="size-1.5 bg-brand-gold rounded-full animate-pulse" /> Now Serving Heat
+        </motion.div>
+
+        <h1 className="font-display text-[clamp(4rem,15vw,12rem)] leading-[0.85] uppercase tracking-tighter">
+          {"Punjab".split("").map((c, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, y: 80 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.8 + i * 0.06, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="inline-block"
+            >
+              {c}
+            </motion.span>
+          ))}
+          <br />
+          <motion.span
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="inline-block text-brand-gold"
+          >
+            Fast Food
+          </motion.span>
+        </h1>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2.6, duration: 0.6 }}
+          className="mt-8 font-mono text-xs md:text-base uppercase tracking-[0.4em] opacity-80"
+        >
+          Taste the Real Flavor of Punjab
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.8, duration: 0.6 }}
+          className="mt-12 flex flex-col sm:flex-row gap-4 justify-center"
+        >
+          <a href="#menu" className="group relative px-8 py-4 bg-brand-red text-white font-bold uppercase tracking-tighter overflow-hidden">
+            <span className="relative z-10 flex items-center gap-2">Order Now <ChevronRight className="size-4 group-hover:translate-x-1 transition-transform" /></span>
+            <div className="absolute inset-0 bg-brand-orange translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+          </a>
+          <a href="#menu" className="px-8 py-4 border border-white/30 hover:border-brand-gold hover:text-brand-gold font-bold uppercase tracking-tighter transition-all">
+            View Menu
+          </a>
+          <a href="#contact" className="px-8 py-4 border border-white/30 hover:border-brand-gold hover:text-brand-gold font-bold uppercase tracking-tighter transition-all">
+            Book Table
+          </a>
+        </motion.div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.5 }}
+        transition={{ delay: 3.2, duration: 1 }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-white/50"
+      >
+        ↓ Scroll
+      </motion.div>
+    </section>
+  );
+}
+
+function Marquee() {
+  const text = "50% OFF FOR STUDENTS • BOGO MONDAYS • FREE LASSI WITH BURGERS • LATE NIGHT TILL 2AM • ";
+  return (
+    <div className="bg-brand-orange py-4 overflow-hidden border-y-2 border-brand-black">
+      <div className="flex whitespace-nowrap animate-marquee">
+        <span className="font-display text-2xl uppercase text-brand-black px-4">
+          {text.repeat(4)}
+        </span>
+        <span className="font-display text-2xl uppercase text-brand-black px-4">
+          {text.repeat(4)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Menu() {
+  const [cat, setCat] = useState("All");
+  const filtered = cat === "All" ? MENU : MENU.filter((m) => m.cat === cat);
+
+  return (
+    <section id="menu" className="py-24 md:py-32 px-6 max-w-7xl mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-6"
+      >
+        <div>
+          <div className="font-mono text-brand-red text-xs font-bold uppercase tracking-[0.3em] mb-3">— The Lineup</div>
+          <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-none">
+            World Class<br />
+            <span className="text-brand-red">Desi Soul</span>
+          </h2>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto font-mono text-[10px] uppercase font-bold flex-shrink-0">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className={`px-4 py-2 transition-all whitespace-nowrap ${
+                cat === c ? "bg-brand-black text-white" : "border border-brand-black/10 hover:border-brand-black"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      <motion.div
+        layout
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
+      >
+        <AnimatePresence mode="popLayout">
+          {filtered.map((item, i) => (
+            <motion.div
+              key={item.name}
+              layout
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: (i % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ y: -6 }}
+              className="group bg-white p-6 hover:bg-brand-gold transition-colors duration-500 relative"
+            >
+              {item.tag && (
+                <div className={`absolute top-4 right-4 z-10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag === "Hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
+                  {item.tag}
+                </div>
+              )}
+              <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5">
+                <img
+                  src={item.img}
+                  alt={item.name}
+                  loading="lazy"
+                  width={640}
+                  height={640}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                />
+              </div>
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
+                <span className="font-mono text-sm font-bold">{item.price}</span>
+              </div>
+              <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.desc}</p>
+              <button className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
+                <Plus className="size-3" /> Add to Cart
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
+    </section>
+  );
+}
+
+function Offers() {
+  return (
+    <section id="offers" className="bg-brand-black text-white py-24 px-6 overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-16"
+        >
+          <div className="font-mono text-brand-gold text-xs font-bold uppercase tracking-[0.3em] mb-3">— Limited Time</div>
+          <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter">
+            Smoking <span className="text-brand-orange">Hot Deals</span>
+          </h2>
+        </motion.div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { title: "Family Combo", price: "$24.99", was: "$38", desc: "4 Zingers · 2 Masala Fries · 1.5L Drink", color: "bg-brand-red" },
+            { title: "Tikka Tuesday", price: "$9.99", was: "$15", desc: "Full Tikka Pizza + Garlic Sauce", color: "bg-brand-orange text-brand-black" },
+            { title: "Late Night", price: "$5.50", was: "$9", desc: "Any wrap + drink, after 11pm", color: "bg-brand-gold text-brand-black" },
+          ].map((d, i) => (
+            <motion.div
+              key={d.title}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              whileHover={{ y: -8, rotate: -1 }}
+              className={`${d.color} p-8 relative overflow-hidden group`}
+            >
+              <div className="font-mono text-[10px] uppercase tracking-widest opacity-70 mb-2">Deal #{i + 1}</div>
+              <h3 className="font-display text-4xl uppercase tracking-tighter mb-4">{d.title}</h3>
+              <p className="text-sm opacity-80 mb-6">{d.desc}</p>
+              <div className="flex items-baseline gap-3 mb-6">
+                <span className="font-display text-5xl">{d.price}</span>
+                <span className="line-through opacity-50 text-sm">{d.was}</span>
+              </div>
+              <Countdown />
+              <button className="mt-6 w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest hover:bg-white hover:text-brand-black transition-colors">
+                Claim Offer
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Countdown() {
+  const [t, setT] = useState({ h: 4, m: 22, s: 45 });
+  useEffect(() => {
+    const i = setInterval(() => {
+      setT((p) => {
+        let s = p.s - 1, m = p.m, h = p.h;
+        if (s < 0) { s = 59; m--; }
+        if (m < 0) { m = 59; h--; }
+        if (h < 0) { h = 23; }
+        return { h, m, s };
+      });
+    }, 1000);
+    return () => clearInterval(i);
+  }, []);
+  return (
+    <div className="flex gap-2 font-mono text-xs uppercase">
+      <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.h).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Hrs</div></div>
+      <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.m).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Min</div></div>
+      <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.s).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Sec</div></div>
+    </div>
+  );
+}
+
+function Counter({ value, suffix = "" }: { value: string; suffix?: string }) {
+  const numeric = parseFloat(value.replace(/[^\d.]/g, ""));
+  const isNumeric = !isNaN(numeric) && !value.includes("%") && !value.includes("h");
+  const ref = useRef<HTMLSpanElement>(null);
+  const [display, setDisplay] = useState(isNumeric ? "0" : value);
+
+  useEffect(() => {
+    if (!isNumeric || !ref.current) return;
+    const el = ref.current;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        let start = 0;
+        const dur = 1500;
+        const t0 = performance.now();
+        const step = (now: number) => {
+          const p = Math.min((now - t0) / dur, 1);
+          const eased = 1 - Math.pow(1 - p, 3);
+          start = numeric * eased;
+          setDisplay(value.replace(/[\d.,]+/, Math.floor(start).toLocaleString()));
+          if (p < 1) requestAnimationFrame(step);
+          else setDisplay(value);
+        };
+        requestAnimationFrame(step);
+        obs.disconnect();
+      }
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [value, numeric, isNumeric]);
+
+  return <span ref={ref}>{display}{suffix}</span>;
+}
+
+function Story() {
+  return (
+    <section id="story" className="bg-brand-cream py-24 md:py-32 px-6">
+      <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+        <motion.div
+          initial={{ opacity: 0, x: -40 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="font-mono text-brand-red text-xs font-bold uppercase tracking-[0.3em] mb-3">— Our Story</div>
+          <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-[0.9] mb-8">
+            From the<br />
+            <span className="text-brand-orange">GT Road</span><br />
+            to your block
+          </h2>
+          <p className="text-brand-black/70 leading-relaxed mb-6">
+            What started as a single roadside dhaba outside Amritsar is now a movement. We bring the same recipes, the same spice grinders, the same fire — and deliver it with the speed your weeknight deserves.
+          </p>
+          <p className="text-brand-black/70 leading-relaxed mb-10">
+            Every patty hand-pressed. Every sauce ground daily. Every spice sourced direct from the Punjab heartlands. No shortcuts. No apologies.
+          </p>
+          <button className="px-8 py-4 bg-brand-black text-white font-bold uppercase tracking-tighter text-sm hover:bg-brand-red transition-colors">
+            Read Full Story
+          </button>
+        </motion.div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {STATS.map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: i * 0.1 }}
+              className="bg-white p-8 border border-brand-black/5 hover:bg-brand-black hover:text-white transition-colors group"
+            >
+              <div className="font-display text-5xl md:text-6xl tracking-tighter text-brand-red group-hover:text-brand-gold">
+                <Counter value={s.num} />
+              </div>
+              <div className="font-mono text-[10px] uppercase tracking-widest opacity-60 mt-2">{s.label}</div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Testimonials() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setIdx((p) => (p + 1) % TESTIMONIALS.length), 5000);
+    return () => clearInterval(i);
+  }, []);
+
+  return (
+    <section className="py-24 md:py-32 px-6 bg-brand-black text-white overflow-hidden">
+      <div className="max-w-4xl mx-auto text-center">
+        <div className="font-mono text-brand-gold text-xs font-bold uppercase tracking-[0.3em] mb-3">— Real Talk</div>
+        <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter mb-16">
+          The <span className="text-brand-orange">Hype</span> is Real
+        </h2>
+
+        <div className="relative h-64">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 flex flex-col items-center"
+            >
+              <div className="flex gap-1 mb-6">
+                {Array.from({ length: TESTIMONIALS[idx].rating }).map((_, i) => (
+                  <Star key={i} className="size-5 fill-brand-gold text-brand-gold" />
+                ))}
+              </div>
+              <p className="font-display text-2xl md:text-4xl uppercase tracking-tight leading-tight mb-8">
+                "{TESTIMONIALS[idx].quote}"
+              </p>
+              <div className="font-mono text-xs uppercase tracking-[0.3em] text-brand-gold">
+                — {TESTIMONIALS[idx].name}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="flex gap-2 justify-center mt-8">
+          {TESTIMONIALS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={`h-1 transition-all ${idx === i ? "w-12 bg-brand-orange" : "w-6 bg-white/20"}`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Gallery() {
+  return (
+    <section className="bg-brand-red py-24 px-6 text-white">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <motion.div
+            initial={{ opacity: 0, x: -40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="md:col-span-8"
+          >
+            <div className="relative overflow-hidden group">
+              <img src={lifestyle} alt="Street vibes" loading="lazy" width={1216} height={800} className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-1000" />
+              <div className="absolute bottom-6 left-6 font-mono text-[10px] uppercase tracking-[0.3em]">
+                — Friday night, downtown
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="md:col-span-4 flex flex-col justify-center"
+          >
+            <h2 className="font-display text-5xl uppercase tracking-tighter mb-6 leading-[0.9]">
+              Freshness <br />
+              <span className="text-brand-gold underline decoration-4 underline-offset-4">Guaranteed</span>
+            </h2>
+            <p className="font-mono text-xs opacity-80 uppercase tracking-widest leading-loose mb-10">
+              We don't do pre-packed. Every patty hand-pressed, every sauce ground daily.
+            </p>
+            <div className="grid grid-cols-2 gap-8 border-t border-white/20 pt-8">
+              <div>
+                <div className="font-display text-4xl">100%</div>
+                <div className="font-mono text-[10px] uppercase opacity-60">Halal</div>
+              </div>
+              <div>
+                <div className="font-display text-4xl">24h</div>
+                <div className="font-mono text-[10px] uppercase opacity-60">Marination</div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Contact() {
+  return (
+    <section id="contact" className="py-24 md:py-32 px-6 bg-white">
+      <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className="font-mono text-brand-red text-xs font-bold uppercase tracking-[0.3em] mb-3">— Get in Touch</div>
+          <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-[0.9] mb-10">
+            Book a<br />
+            <span className="text-brand-orange">table</span>
+          </h2>
+
+          <div className="space-y-6 mb-10">
+            <div className="flex items-start gap-4">
+              <MapPin className="size-5 text-brand-red mt-0.5" />
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40 mb-1">Location</div>
+                <div className="font-medium">123 Spice Route, Downtown</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <Phone className="size-5 text-brand-red mt-0.5" />
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40 mb-1">Phone</div>
+                <div className="font-medium">+1 (234) 567 890</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <Clock className="size-5 text-brand-red mt-0.5" />
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40 mb-1">Hours</div>
+                <div className="font-medium">Daily · 11am to 2am</div>
+              </div>
+            </div>
+          </div>
+
+          <a
+            href="https://wa.me/12345678900"
+            className="inline-flex items-center gap-3 px-6 py-4 bg-green-600 text-white font-bold uppercase tracking-tighter text-sm hover:bg-green-700 transition-colors"
+          >
+            <MessageCircle className="size-4" /> Chat on WhatsApp
+          </a>
+        </motion.div>
+
+        <motion.form
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+          onSubmit={(e) => e.preventDefault()}
+          className="bg-brand-cream p-8 md:p-10 space-y-5"
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <input placeholder="Name" className="bg-white px-4 py-4 font-mono text-sm placeholder:text-brand-black/30 border border-brand-black/5 focus:border-brand-red outline-none transition-colors" />
+            <input placeholder="Phone" className="bg-white px-4 py-4 font-mono text-sm placeholder:text-brand-black/30 border border-brand-black/5 focus:border-brand-red outline-none transition-colors" />
+          </div>
+          <input placeholder="Email" type="email" className="w-full bg-white px-4 py-4 font-mono text-sm placeholder:text-brand-black/30 border border-brand-black/5 focus:border-brand-red outline-none transition-colors" />
+          <div className="grid grid-cols-2 gap-4">
+            <input placeholder="Date" type="date" className="bg-white px-4 py-4 font-mono text-sm placeholder:text-brand-black/30 border border-brand-black/5 focus:border-brand-red outline-none transition-colors" />
+            <input placeholder="Guests" type="number" defaultValue={2} className="bg-white px-4 py-4 font-mono text-sm placeholder:text-brand-black/30 border border-brand-black/5 focus:border-brand-red outline-none transition-colors" />
+          </div>
+          <textarea placeholder="Special requests" rows={4} className="w-full bg-white px-4 py-4 font-mono text-sm placeholder:text-brand-black/30 border border-brand-black/5 focus:border-brand-red outline-none transition-colors resize-none" />
+          <button className="w-full py-4 bg-brand-red text-white font-bold uppercase tracking-tighter text-sm hover:bg-brand-black transition-colors">
+            Reserve My Spot
+          </button>
+        </motion.form>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="bg-brand-black text-white py-20 px-6">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12">
+        <div className="md:w-1/3">
+          <div className="font-display text-3xl uppercase tracking-tighter text-brand-red mb-6">
+            Punjab<span className="text-brand-gold">.</span>Fast Food
+          </div>
+          <p className="text-sm text-white/50 leading-relaxed mb-8">
+            Bringing the energetic spirit of the Grand Trunk Road to your neighborhood. Fast food, real soul.
+          </p>
+          <div className="flex gap-3">
+            {[Instagram, Facebook, MessageCircle].map((Icon, i) => (
+              <a key={i} href="#" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
+                <Icon className="size-4" />
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-12">
+          <div>
+            <h4 className="font-mono text-xs uppercase font-bold text-brand-gold mb-6">Explore</h4>
+            <ul className="space-y-3 text-sm text-white/40 font-bold uppercase tracking-tighter">
+              <li><a href="#story" className="hover:text-white transition-colors">Our Story</a></li>
+              <li><a href="#menu" className="hover:text-white transition-colors">Menu</a></li>
+              <li><a href="#offers" className="hover:text-white transition-colors">Offers</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-mono text-xs uppercase font-bold text-brand-gold mb-6">Contact</h4>
+            <ul className="space-y-3 text-sm text-white/40">
+              <li className="flex items-center gap-2"><MapPin className="size-3" /> 123 Spice Route</li>
+              <li className="flex items-center gap-2"><Phone className="size-3" /> +1 234 567 890</li>
+              <li className="flex items-center gap-2"><Mail className="size-3" /> hello@punjabff.com</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-mono uppercase tracking-[0.2em] opacity-40">
+        <p>© 2026 Punjab Fast Food. All Rights Reserved.</p>
+        <p>Designed for Flavor.</p>
+      </div>
+    </footer>
   );
 }
