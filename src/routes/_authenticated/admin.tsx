@@ -5,7 +5,7 @@ import { Check, Flame, Loader2, LogOut, Plus, ShieldCheck, ShoppingBag, Star, Ut
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { claimFirstAdmin, createMenuItem, getAdminDashboard, updateMenuItem, updateOrderStatus } from "@/lib/admin.functions";
-import type { AdminMenuItem, AdminOrder } from "@/lib/admin.server";
+import type { AdminDashboardSnapshot, AdminMenuItem, AdminOrder } from "@/lib/admin.types";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-type Snapshot = { isAdmin: boolean; menuItems: AdminMenuItem[]; orders: AdminOrder[] };
+type Snapshot = AdminDashboardSnapshot;
 
 const emptyDraft = {
   name: "",

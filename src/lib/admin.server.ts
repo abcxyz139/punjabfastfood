@@ -1,31 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-
-export type AdminMenuItem = {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  imageKey: string;
-  tag: string | null;
-  active: boolean;
-  featured: boolean;
-  displayOrder: number;
-};
-
-export type AdminOrder = {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  items: unknown;
-  subtotal: number;
-  discount: number;
-  total: number;
-  status: string;
-  notes: string | null;
-  createdAt: string;
-};
+import type { AdminMenuItem, AdminOrder, AdminDashboardSnapshot } from "./admin.types";
 
 type CloudClient = SupabaseClient<Database>;
 
@@ -46,7 +21,7 @@ export async function requireAdmin(supabase: CloudClient, userId: string) {
   if (!admin) throw new Error("Admin access required");
 }
 
-export async function loadAdminDashboard(supabase: CloudClient, userId: string) {
+export async function loadAdminDashboard(supabase: CloudClient, userId: string): Promise<AdminDashboardSnapshot> {
   const admin = await isCurrentUserAdmin(supabase, userId);
   if (!admin) {
     return {
@@ -63,7 +38,7 @@ export async function loadAdminDashboard(supabase: CloudClient, userId: string) 
       .order("display_order", { ascending: true }),
     supabase
       .from("orders")
-      .select("id,customer_name,customer_phone,items,subtotal,discount,total,status,notes,created_at")
+      .select("id,customer_name,customer_phone,subtotal,discount,total,status,notes,created_at")
       .order("created_at", { ascending: false })
       .limit(20),
   ]);
@@ -89,7 +64,6 @@ export async function loadAdminDashboard(supabase: CloudClient, userId: string) 
       id: order.id,
       customerName: order.customer_name,
       customerPhone: order.customer_phone,
-      items: order.items,
       subtotal: Number(order.subtotal),
       discount: Number(order.discount),
       total: Number(order.total),
