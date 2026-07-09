@@ -1,12 +1,9 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, ShieldCheck, LogOut, Percent, Gift } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
-import { createCustomerOrder } from "@/lib/orders.functions";
-import { supabase } from "@/integrations/supabase/client";
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
@@ -22,8 +19,8 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
       { name: "description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
-      { property: "og:title", content: "Punjab Fast Food" },
-      { property: "og:description", content: "Taste the Real Flavor of Punjab" },
+      { property: "og:title", content: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
+      { property: "og:description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
     ],
   }),
   component: Home,
@@ -73,7 +70,6 @@ function Home() {
       <Marquee />
       <Menu />
       <Offers />
-      <BestCombos />
       <AiRecommendations />
       <Story />
       <Testimonials />
@@ -121,27 +117,11 @@ function LoadingScreen() {
 
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", on);
     return () => window.removeEventListener("scroll", on);
   }, []);
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session?.user)));
-    return () => data.subscription.unsubscribe();
-  }, []);
-
-  async function handleSignOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
-
   return (
     <motion.nav
       initial={{ y: -40, opacity: 0 }}
@@ -155,29 +135,16 @@ function Nav() {
         Punjab<span className="text-brand-gold">.</span>Fast Food
       </a>
       <div className={`hidden md:flex gap-8 font-mono text-xs uppercase tracking-widest font-bold ${scrolled ? "text-brand-black" : "text-white"}`}>
-        {["Menu", "Offers", "Combos", "AI", "Story", "Contact"].map((l) => (
+        {["Menu", "Offers", "Story", "Contact"].map((l) => (
           <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-brand-orange transition-colors relative group">
             {l}
             <span className="absolute -bottom-1 left-0 w-0 h-px bg-brand-orange group-hover:w-full transition-all duration-300" />
           </a>
         ))}
       </div>
-      <div className="flex items-center gap-2">
-        {signedIn ? (
-          <>
-            <Link to="/admin" className="bg-brand-red text-white px-4 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
-              <ShieldCheck className="size-3.5" /> Admin
-            </Link>
-            <button onClick={handleSignOut} aria-label="Sign out" className={`size-9 grid place-items-center border transition-colors ${scrolled ? "border-brand-black/10 text-brand-black hover:bg-brand-black hover:text-white" : "border-white/25 text-white hover:bg-white hover:text-brand-black"}`}>
-              <LogOut className="size-4" />
-            </button>
-          </>
-        ) : (
-          <Link to="/auth" className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
-            <ShoppingBag className="size-3.5" /> Sign In
-          </Link>
-        )}
-      </div>
+      <button className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
+        <ShoppingBag className="size-3.5" /> Order Now
+      </button>
     </motion.nav>
   );
 }
@@ -443,80 +410,6 @@ function Countdown() {
       <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.m).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Min</div></div>
       <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.s).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Sec</div></div>
     </div>
-  );
-}
-
-function BestCombos() {
-  const { cart } = useCartState();
-  const combos = getBestCombos(cart);
-  const subtotal = getCartSubtotal(cart);
-
-  return (
-    <section id="combos" className="relative py-24 px-6 bg-brand-red text-white overflow-hidden">
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(135deg, #fbbf24 12.5%, transparent 12.5%, transparent 50%, #fbbf24 50%, #fbbf24 62.5%, transparent 62.5%, transparent 100%)", backgroundSize: "48px 48px" }} />
-      <div className="max-w-7xl mx-auto relative">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12"
-        >
-          <div>
-            <div className="font-mono text-brand-gold text-xs font-bold uppercase tracking-[0.3em] mb-3 flex items-center gap-2"><Gift className="size-3" /> — Smart Combos</div>
-            <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-none">
-              Best Combo<br /><span className="text-brand-gold">For Your Cart</span>
-            </h2>
-          </div>
-          <div className="bg-brand-black px-6 py-5 min-w-[220px]">
-            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/50 mb-1">Current subtotal</div>
-            <motion.div key={subtotal} initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="font-display text-5xl text-brand-gold">
-              {formatMoney(subtotal)}
-            </motion.div>
-          </div>
-        </motion.div>
-
-        <div className="grid md:grid-cols-3 gap-4">
-          {combos.map((combo, i) => (
-            <motion.div
-              key={combo.addOn.name}
-              initial={{ opacity: 0, y: 40, rotate: i === 1 ? 1 : -1 }}
-              whileInView={{ opacity: 1, y: 0, rotate: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -8, rotate: i === 1 ? -1 : 1 }}
-              className="bg-white text-brand-black p-6 relative overflow-hidden"
-            >
-              <div className="absolute top-4 right-4 bg-brand-gold px-2 py-1 text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1">
-                <Percent className="size-3" /> Save {formatMoney(combo.savings)}
-              </div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-red mb-4">{combo.trigger}</div>
-              <h3 className="font-display text-4xl uppercase tracking-tighter leading-none mb-3">Add {combo.addOn.name}</h3>
-              <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{combo.reason}</p>
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                <div className="border border-brand-black/10 p-3">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-brand-black/40 mb-1">Normal add-on</div>
-                  <div className="font-display text-3xl line-through opacity-50">{formatMoney(combo.originalAddOnPrice)}</div>
-                </div>
-                <div className="border border-brand-red p-3 bg-brand-red text-white">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-white/60 mb-1">Combo add-on</div>
-                  <div className="font-display text-3xl">{formatMoney(combo.comboAddOnPrice)}</div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mb-5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40">New cart total</span>
-                <motion.span key={combo.total} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="font-display text-4xl text-brand-red">
-                  {formatMoney(combo.total)}
-                </motion.span>
-              </div>
-              <button onClick={() => addToCart(combo.addOn.name)} className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
-                <Plus className="size-3" /> Add Combo Item
-              </button>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -834,46 +727,6 @@ function Footer() {
 const CART_KEY = "pff:cart";
 const PAST_KEY = "pff:past";
 
-const formatMoney = (value: number) => `$${value.toFixed(2)}`;
-const getItemPrice = (name: string) => Number(MENU.find((item) => item.name === name)?.price.replace("$", "") ?? 0);
-const getCartSubtotal = (cart: string[]) => cart.reduce((sum, item) => sum + getItemPrice(item), 0);
-const findMenuItem = (name: string) => MENU.find((item) => item.name === name) ?? MENU[0];
-
-function getBestCombos(cart: string[]) {
-  const subtotal = getCartSubtotal(cart);
-  const has = (matcher: (item: MenuItem) => boolean) => cart.some((name) => {
-    const item = MENU.find((menuItem) => menuItem.name === name);
-    return item ? matcher(item) : false;
-  });
-  const missing = (name: string) => !cart.includes(name);
-  const rules = [
-    { addOn: "Masala Fries", discount: 1.5, trigger: "Burger heat detected", reason: "Your burger or zinger cart unlocks spiced fries at a lower combo price.", match: () => has((item) => ["Burgers", "Zinger"].includes(item.cat)) && missing("Masala Fries") },
-    { addOn: "Lahori Roll", discount: 1.25, trigger: "Pizza balance", reason: "A roll cuts through the cheese with mint chutney and a lighter street-food bite.", match: () => has((item) => item.cat === "Pizza") && missing("Lahori Roll") },
-    { addOn: "Cheesy Fries Deluxe", discount: 2, trigger: "Wrap upgrade", reason: "Loaded fries turn a quick wrap into a proper sharing combo.", match: () => has((item) => ["Wraps", "Shawarma"].includes(item.cat)) && missing("Cheesy Fries Deluxe") },
-    { addOn: "Paratha Wrap", discount: 1, trigger: "Starter stack", reason: "Start with a hot wrap and build a fast combo before checkout.", match: () => cart.length === 0 },
-  ];
-
-  return rules
-    .filter((rule) => rule.match())
-    .concat(rules.filter((rule) => !rule.match()))
-    .filter((rule, index, arr) => arr.findIndex((candidate) => candidate.addOn === rule.addOn) === index)
-    .slice(0, 3)
-    .map((rule) => {
-      const addOn = findMenuItem(rule.addOn);
-      const originalAddOnPrice = getItemPrice(addOn.name);
-      const comboAddOnPrice = Math.max(0, originalAddOnPrice - rule.discount);
-      return {
-        addOn,
-        trigger: rule.trigger,
-        reason: rule.reason,
-        originalAddOnPrice,
-        comboAddOnPrice,
-        savings: originalAddOnPrice - comboAddOnPrice,
-        total: subtotal + comboAddOnPrice,
-      };
-    });
-}
-
 function readList(key: string): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -917,12 +770,8 @@ function AiRecommendations() {
   const { cart, past } = useCartState();
   const [picks, setPicks] = useState<Pick[]>([]);
   const [loading, setLoading] = useState(false);
-  const [orderLoading, setOrderLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [orderMessage, setOrderMessage] = useState<string | null>(null);
-  const [signedIn, setSignedIn] = useState(false);
   const recommend = useServerFn(recommendDishes);
-  const createOrder = useServerFn(createCustomerOrder);
 
   const getPicks = useCallback(async () => {
     setLoading(true);
@@ -948,44 +797,9 @@ function AiRecommendations() {
     writeList(PAST_KEY, merged.slice(-30));
     writeList(CART_KEY, []);
   };
-  const submitOrder = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (cart.length === 0) return;
-    setOrderLoading(true);
-    setOrderMessage(null);
-    setError(null);
-    const form = new FormData(event.currentTarget);
-    const subtotal = getCartSubtotal(cart);
-    try {
-      const result = await createOrder({
-        data: {
-          customerName: String(form.get("name") ?? "").trim(),
-          customerPhone: String(form.get("phone") ?? "").trim(),
-          items: cart.map((name) => ({ name, price: getItemPrice(name) })),
-          subtotal,
-          discount: 0,
-          total: subtotal,
-          notes: String(form.get("notes") ?? "").trim() || null,
-        },
-      });
-      moveCartToPast();
-      setOrderMessage(`Order ${result.id.slice(0, 8).toUpperCase()} sent to the kitchen · ${formatMoney(result.total)}`);
-      event.currentTarget.reset();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign in first, then place your order.");
-    } finally {
-      setOrderLoading(false);
-    }
-  };
   const removeFromCart = (n: string) => writeList(CART_KEY, cart.filter((x) => x !== n));
   const removeFromPast = (n: string) => writeList(PAST_KEY, past.filter((x) => x !== n));
   const lookup = (n: string) => MENU.find((m) => m.name === n);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session?.user)));
-    return () => data.subscription.unsubscribe();
-  }, []);
 
   return (
     <section id="ai" className="relative py-24 md:py-32 px-6 bg-gradient-to-b from-white via-brand-cream to-white overflow-hidden">
@@ -1051,35 +865,6 @@ function AiRecommendations() {
             {error}
           </div>
         )}
-
-        {orderMessage && (
-          <div className="max-w-xl mx-auto mb-8 p-4 border border-brand-gold/40 bg-brand-gold/20 text-brand-black text-sm font-mono text-center">
-            {orderMessage}
-          </div>
-        )}
-
-        <motion.form
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          onSubmit={submitOrder}
-          className="mb-12 bg-brand-black text-white p-6 md:p-8 grid lg:grid-cols-[1fr_1fr_auto] gap-4 items-end"
-        >
-          <div>
-            <div className="font-mono text-brand-gold text-[10px] uppercase tracking-[0.25em] mb-2">Live Kitchen Order</div>
-            <div className="font-display text-4xl uppercase tracking-tighter">Cart Total {formatMoney(getCartSubtotal(cart))}</div>
-            {!signedIn && <p className="mt-2 text-xs text-white/50">Sign in from the top bar before placing a live order.</p>}
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <input name="name" required disabled={!signedIn || cart.length === 0} placeholder="Name" className="bg-white/10 border border-white/10 px-4 py-3 text-sm outline-none focus:border-brand-gold disabled:opacity-40" />
-            <input name="phone" required disabled={!signedIn || cart.length === 0} placeholder="Phone" className="bg-white/10 border border-white/10 px-4 py-3 text-sm outline-none focus:border-brand-gold disabled:opacity-40" />
-            <input name="notes" disabled={!signedIn || cart.length === 0} placeholder="Notes" className="sm:col-span-2 bg-white/10 border border-white/10 px-4 py-3 text-sm outline-none focus:border-brand-gold disabled:opacity-40" />
-          </div>
-          <button disabled={!signedIn || cart.length === 0 || orderLoading} className="h-12 px-6 bg-brand-red hover:bg-brand-orange hover:text-brand-black disabled:opacity-40 font-bold uppercase tracking-tighter text-xs flex items-center justify-center gap-2 transition-colors">
-            {orderLoading ? <Loader2 className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />} Place Order
-          </button>
-        </motion.form>
 
         <AnimatePresence mode="popLayout">
           {picks.length > 0 && (

@@ -11,7 +11,6 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -79,11 +78,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
-      { name: "description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries and more. Order now." },
+      { name: "description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
       { property: "og:title", content: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
-      { property: "og:description", content: "Bold masalas, modern fast-food speed. Punjab Fast Food." },
+      { property: "og:description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
+      { name: "twitter:description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/07bd6acb-67f7-4a98-8164-86447bfd382b" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/07bd6acb-67f7-4a98-8164-86447bfd382b" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -117,17 +120,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const router = useRouter();
-
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-    });
-
-    return () => data.subscription.unsubscribe();
-  }, [queryClient, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
