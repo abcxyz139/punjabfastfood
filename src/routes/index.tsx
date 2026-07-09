@@ -155,7 +155,7 @@ function Nav() {
         Punjab<span className="text-brand-gold">.</span>Fast Food
       </a>
       <div className={`hidden md:flex gap-8 font-mono text-xs uppercase tracking-widest font-bold ${scrolled ? "text-brand-black" : "text-white"}`}>
-        {["Menu", "Offers", "AI", "Story", "Contact"].map((l) => (
+        {["Menu", "Offers", "Combos", "AI", "Story", "Contact"].map((l) => (
           <a key={l} href={`#${l.toLowerCase()}`} className="hover:text-brand-orange transition-colors relative group">
             {l}
             <span className="absolute -bottom-1 left-0 w-0 h-px bg-brand-orange group-hover:w-full transition-all duration-300" />
@@ -452,7 +452,7 @@ function BestCombos() {
   const subtotal = getCartSubtotal(cart);
 
   return (
-    <section id="ai" className="relative py-24 px-6 bg-brand-red text-white overflow-hidden">
+    <section id="combos" className="relative py-24 px-6 bg-brand-red text-white overflow-hidden">
       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "linear-gradient(135deg, #fbbf24 12.5%, transparent 12.5%, transparent 50%, #fbbf24 50%, #fbbf24 62.5%, transparent 62.5%, transparent 100%)", backgroundSize: "48px 48px" }} />
       <div className="max-w-7xl mx-auto relative">
         <motion.div
