@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, ShieldCheck, LogOut, Percent, Gift } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
@@ -948,7 +948,7 @@ function AiRecommendations() {
     writeList(PAST_KEY, merged.slice(-30));
     writeList(CART_KEY, []);
   };
-  const submitOrder = async (event: React.FormEvent<HTMLFormElement>) => {
+  const submitOrder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (cart.length === 0) return;
     setOrderLoading(true);
