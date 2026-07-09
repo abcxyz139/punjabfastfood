@@ -21,10 +21,15 @@ export const OrderStatusInputSchema = z.object({
 export const CustomerOrderInputSchema = z.object({
   customerName: z.string().trim().min(2).max(100),
   customerPhone: z.string().trim().min(5).max(30),
-  items: z.array(z.object({ name: z.string().trim().min(2).max(80), price: z.number().min(0).max(999) })).min(1).max(30),
-  subtotal: z.number().min(0).max(9999),
-  discount: z.number().min(0).max(9999).default(0),
-  total: z.number().min(0).max(9999),
+  items: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        quantity: z.number().int().min(1).max(50).default(1),
+      }),
+    )
+    .min(1)
+    .max(30),
   notes: z.string().trim().max(500).nullable().optional(),
 });
 
