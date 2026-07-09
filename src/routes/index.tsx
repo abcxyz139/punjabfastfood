@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, ShieldCheck, LogOut, Percent, Gift } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
+import { createCustomerOrder } from "@/lib/orders.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 import heroSpice from "@/assets/hero-spice.jpg";
@@ -916,8 +917,12 @@ function AiRecommendations() {
   const { cart, past } = useCartState();
   const [picks, setPicks] = useState<Pick[]>([]);
   const [loading, setLoading] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orderMessage, setOrderMessage] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const recommend = useServerFn(recommendDishes);
+  const createOrder = useServerFn(createCustomerOrder);
 
   const getPicks = useCallback(async () => {
     setLoading(true);
@@ -943,9 +948,44 @@ function AiRecommendations() {
     writeList(PAST_KEY, merged.slice(-30));
     writeList(CART_KEY, []);
   };
+  const submitOrder = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (cart.length === 0) return;
+    setOrderLoading(true);
+    setOrderMessage(null);
+    setError(null);
+    const form = new FormData(event.currentTarget);
+    const subtotal = getCartSubtotal(cart);
+    try {
+      const result = await createOrder({
+        data: {
+          customerName: String(form.get("name") ?? "").trim(),
+          customerPhone: String(form.get("phone") ?? "").trim(),
+          items: cart.map((name) => ({ name, price: getItemPrice(name) })),
+          subtotal,
+          discount: 0,
+          total: subtotal,
+          notes: String(form.get("notes") ?? "").trim() || null,
+        },
+      });
+      moveCartToPast();
+      setOrderMessage(`Order ${result.id.slice(0, 8).toUpperCase()} sent to the kitchen · ${formatMoney(result.total)}`);
+      event.currentTarget.reset();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sign in first, then place your order.");
+    } finally {
+      setOrderLoading(false);
+    }
+  };
   const removeFromCart = (n: string) => writeList(CART_KEY, cart.filter((x) => x !== n));
   const removeFromPast = (n: string) => writeList(PAST_KEY, past.filter((x) => x !== n));
   const lookup = (n: string) => MENU.find((m) => m.name === n);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session?.user)));
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   return (
     <section id="ai" className="relative py-24 md:py-32 px-6 bg-gradient-to-b from-white via-brand-cream to-white overflow-hidden">
@@ -1011,6 +1051,35 @@ function AiRecommendations() {
             {error}
           </div>
         )}
+
+        {orderMessage && (
+          <div className="max-w-xl mx-auto mb-8 p-4 border border-brand-gold/40 bg-brand-gold/20 text-brand-black text-sm font-mono text-center">
+            {orderMessage}
+          </div>
+        )}
+
+        <motion.form
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          onSubmit={submitOrder}
+          className="mb-12 bg-brand-black text-white p-6 md:p-8 grid lg:grid-cols-[1fr_1fr_auto] gap-4 items-end"
+        >
+          <div>
+            <div className="font-mono text-brand-gold text-[10px] uppercase tracking-[0.25em] mb-2">Live Kitchen Order</div>
+            <div className="font-display text-4xl uppercase tracking-tighter">Cart Total {formatMoney(getCartSubtotal(cart))}</div>
+            {!signedIn && <p className="mt-2 text-xs text-white/50">Sign in from the top bar before placing a live order.</p>}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <input name="name" required disabled={!signedIn || cart.length === 0} placeholder="Name" className="bg-white/10 border border-white/10 px-4 py-3 text-sm outline-none focus:border-brand-gold disabled:opacity-40" />
+            <input name="phone" required disabled={!signedIn || cart.length === 0} placeholder="Phone" className="bg-white/10 border border-white/10 px-4 py-3 text-sm outline-none focus:border-brand-gold disabled:opacity-40" />
+            <input name="notes" disabled={!signedIn || cart.length === 0} placeholder="Notes" className="sm:col-span-2 bg-white/10 border border-white/10 px-4 py-3 text-sm outline-none focus:border-brand-gold disabled:opacity-40" />
+          </div>
+          <button disabled={!signedIn || cart.length === 0 || orderLoading} className="h-12 px-6 bg-brand-red hover:bg-brand-orange hover:text-brand-black disabled:opacity-40 font-bold uppercase tracking-tighter text-xs flex items-center justify-center gap-2 transition-colors">
+            {orderLoading ? <Loader2 className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />} Place Order
+          </button>
+        </motion.form>
 
         <AnimatePresence mode="popLayout">
           {picks.length > 0 && (

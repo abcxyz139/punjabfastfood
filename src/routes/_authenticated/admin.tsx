@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
-import { Check, Flame, Loader2, LogOut, Plus, ShieldCheck, ShoppingBag, Star, Utensils } from "lucide-react";
+import { Check, Flame, Loader2, LogOut, Plus, ShieldCheck, ShoppingBag, Star, Utensils, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { claimFirstAdmin, createMenuItem, getAdminDashboard, updateMenuItem, updateOrderStatus } from "@/lib/admin.functions";
@@ -292,7 +292,7 @@ function AdminPage() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof Flame; label: string; value: string }) {
+function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
     <div className="bg-white text-brand-black p-5">
       <Icon className="size-5 text-brand-red mb-5" />

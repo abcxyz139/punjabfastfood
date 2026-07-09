@@ -18,4 +18,14 @@ export const OrderStatusInputSchema = z.object({
   status: z.enum(["new", "preparing", "ready", "completed", "cancelled"]),
 });
 
+export const CustomerOrderInputSchema = z.object({
+  customerName: z.string().trim().min(2).max(100),
+  customerPhone: z.string().trim().min(5).max(30),
+  items: z.array(z.object({ name: z.string().trim().min(2).max(80), price: z.number().min(0).max(999) })).min(1).max(30),
+  subtotal: z.number().min(0).max(9999),
+  discount: z.number().min(0).max(9999).default(0),
+  total: z.number().min(0).max(9999),
+  notes: z.string().trim().max(500).nullable().optional(),
+});
+
 export type MenuItemInput = z.infer<typeof MenuItemInputSchema>;
