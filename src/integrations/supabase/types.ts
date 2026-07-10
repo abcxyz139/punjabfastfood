@@ -14,10 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      menu_item_addons: {
+        Row: {
+          available: boolean
+          created_at: string
+          display_order: number
+          id: string
+          menu_item_id: string
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          menu_item_id: string
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          menu_item_id?: string
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_addons_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_variants: {
+        Row: {
+          available: boolean
+          created_at: string
+          display_order: number
+          id: string
+          menu_item_id: string
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          menu_item_id: string
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          menu_item_id?: string
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_variants_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           active: boolean
           category: string
+          category_id: string | null
           created_at: string
           description: string
           display_order: number
@@ -32,6 +145,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category: string
+          category_id?: string | null
           created_at?: string
           description: string
           display_order?: number
@@ -46,6 +160,7 @@ export type Database = {
         Update: {
           active?: boolean
           category?: string
+          category_id?: string | null
           created_at?: string
           description?: string
           display_order?: number
@@ -57,7 +172,15 @@ export type Database = {
           tag?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
