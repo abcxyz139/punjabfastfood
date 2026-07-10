@@ -24,7 +24,9 @@ export const CustomerOrderInputSchema = z.object({
   items: z
     .array(
       z.object({
-        id: z.string().uuid(),
+        menuItemId: z.string().uuid(),
+        variantId: z.string().uuid().nullable().optional(),
+        addonIds: z.array(z.string().uuid()).max(20).default([]),
         quantity: z.number().int().min(1).max(50).default(1),
       }),
     )
@@ -33,4 +35,33 @@ export const CustomerOrderInputSchema = z.object({
   notes: z.string().trim().max(500).nullable().optional(),
 });
 
+export const CategoryInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(1).max(60),
+  slug: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/),
+  displayOrder: z.number().int().min(0).max(9999).default(100),
+  active: z.boolean().default(true),
+});
+
+export const VariantInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  menuItemId: z.string().uuid(),
+  name: z.string().trim().min(1).max(60),
+  price: z.number().min(0).max(9999),
+  available: z.boolean().default(true),
+  displayOrder: z.number().int().min(0).max(9999).default(100),
+});
+
+export const AddonInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  menuItemId: z.string().uuid(),
+  name: z.string().trim().min(1).max(60),
+  price: z.number().min(0).max(9999),
+  available: z.boolean().default(true),
+  displayOrder: z.number().int().min(0).max(9999).default(100),
+});
+
 export type MenuItemInput = z.infer<typeof MenuItemInputSchema>;
+export type CategoryInput = z.infer<typeof CategoryInputSchema>;
+export type VariantInput = z.infer<typeof VariantInputSchema>;
+export type AddonInput = z.infer<typeof AddonInputSchema>;
