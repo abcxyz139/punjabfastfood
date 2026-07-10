@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2 } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
+import { getPublicMenu } from "@/lib/menu.functions";
+import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
@@ -13,6 +16,23 @@ import imgFries from "@/assets/menu-fries.jpg";
 import imgZinger from "@/assets/menu-zinger.jpg";
 import imgWrap from "@/assets/menu-wrap.jpg";
 import lifestyle from "@/assets/lifestyle.jpg";
+
+const IMAGE_MAP: Record<string, string> = {
+  burger: imgBurger,
+  pizza: imgPizza,
+  shawarma: imgShawarma,
+  fries: imgFries,
+  zinger: imgZinger,
+  wrap: imgWrap,
+};
+
+function resolveImg(key: string) {
+  return IMAGE_MAP[key] ?? imgBurger;
+}
+
+function formatPrice(n: number) {
+  return `$${n.toFixed(2)}`;
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,28 +46,6 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type MenuItem = {
-  name: string;
-  price: string;
-  desc: string;
-  img: string;
-  cat: string;
-  tag?: string;
-};
-
-const MENU: MenuItem[] = [
-  { name: "Zinger Punjab", price: "$8.99", desc: "Double crispy chicken, masala mayo, achari pickles.", img: imgBurger, cat: "Burgers", tag: "Hot" },
-  { name: "Tikka Pizza", price: "$14.50", desc: "Tandoori chunks, green chilies, sourdough crust.", img: imgPizza, cat: "Pizza" },
-  { name: "Lahori Roll", price: "$7.25", desc: "Marinated chicken, mint chutney, pickled onions.", img: imgShawarma, cat: "Shawarma" },
-  { name: "Masala Fries", price: "$5.00", desc: "Double-fried, tossed in signature spice blend.", img: imgFries, cat: "Fries" },
-  { name: "Zinger Tower", price: "$10.50", desc: "Stacked golden zinger, peri sauce, slaw.", img: imgZinger, cat: "Zinger", tag: "New" },
-  { name: "Paratha Wrap", price: "$6.75", desc: "Hand-rolled paratha, spiced chicken, chutney.", img: imgWrap, cat: "Wraps" },
-  { name: "Royal Pizza XL", price: "$18.00", desc: "Extra cheese, double tandoori, jumbo size.", img: imgPizza, cat: "Pizza" },
-  { name: "Cheesy Fries Deluxe", price: "$6.50", desc: "Loaded melted cheddar, peri spice, cilantro.", img: imgFries, cat: "Fries" },
-];
-
-const CATEGORIES = ["All", "Burgers", "Pizza", "Shawarma", "Zinger", "Fries", "Wraps"];
-
 const TESTIMONIALS = [
   { name: "Ayesha M.", quote: "The Zinger Punjab is unreal. Crispy, juicy, and that masala mayo — addictive.", rating: 5 },
   { name: "Rohan S.", quote: "Best tikka pizza I've had outside of Amritsar. The crust alone is worth it.", rating: 5 },
@@ -60,6 +58,75 @@ const STATS = [
   { num: "24h", label: "Marination Time" },
   { num: "100%", label: "Halal Certified" },
 ];
+
+// ---------- Menu data hook ----------
+
+function useMenuData() {
+  const fetchMenu = useServerFn(getPublicMenu);
+  return useQuery({
+    queryKey: ["public-menu"],
+    queryFn: () => fetchMenu(),
+    staleTime: 60_000,
+  });
+}
+
+// ---------- Cart (localStorage) ----------
+
+const CART_KEY = "pff:cart2";
+const PAST_KEY = "pff:past2";
+
+function entryKey(menuItemId: string, variantId: string | null, addonIds: string[]) {
+  return [menuItemId, variantId ?? "-", ...[...addonIds].sort()].join("|");
+}
+
+function readCart(key: string): CartEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((e) => e && typeof e === "object" && typeof e.menuItemId === "string") as CartEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function writeCart(key: string, v: CartEntry[]) {
+  localStorage.setItem(key, JSON.stringify(v));
+  window.dispatchEvent(new CustomEvent("pff:storage"));
+}
+
+function addEntry(entry: Omit<CartEntry, "key">) {
+  const key = entryKey(entry.menuItemId, entry.variantId, entry.addonIds);
+  const cart = readCart(CART_KEY);
+  const idx = cart.findIndex((e) => e.key === key);
+  if (idx >= 0) {
+    cart[idx] = { ...cart[idx], quantity: cart[idx].quantity + entry.quantity };
+  } else {
+    cart.push({ ...entry, key });
+  }
+  writeCart(CART_KEY, cart);
+}
+
+function useCartState() {
+  const [cart, setCart] = useState<CartEntry[]>([]);
+  const [past, setPast] = useState<CartEntry[]>([]);
+  useEffect(() => {
+    const sync = () => {
+      setCart(readCart(CART_KEY));
+      setPast(readCart(PAST_KEY));
+    };
+    sync();
+    window.addEventListener("pff:storage", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("pff:storage", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return { cart, past, setCart, setPast };
+}
+
+// ---------- Page ----------
 
 function Home() {
   return (
@@ -142,9 +209,9 @@ function Nav() {
           </a>
         ))}
       </div>
-      <button className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
+      <a href="#menu" className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
         <ShoppingBag className="size-3.5" /> Order Now
-      </button>
+      </a>
     </motion.nav>
   );
 }
@@ -162,7 +229,6 @@ function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-brand-black/40 via-transparent to-brand-black" />
       </motion.div>
 
-      {/* floating glow orbs */}
       <div className="absolute top-1/4 left-10 size-24 bg-brand-orange rounded-full mix-blend-screen blur-3xl opacity-50 spice-float" />
       <div className="absolute bottom-1/4 right-20 size-40 bg-brand-red rounded-full mix-blend-screen blur-3xl opacity-40 spice-float" style={{ animationDelay: "2s" }} />
       <div className="absolute top-1/3 right-1/4 size-16 bg-brand-gold rounded-full mix-blend-screen blur-2xl opacity-30 spice-float" style={{ animationDelay: "4s" }} />
@@ -245,20 +311,27 @@ function Marquee() {
   return (
     <div className="bg-brand-orange py-4 overflow-hidden border-y-2 border-brand-black">
       <div className="flex whitespace-nowrap animate-marquee">
-        <span className="font-display text-2xl uppercase text-brand-black px-4">
-          {text.repeat(4)}
-        </span>
-        <span className="font-display text-2xl uppercase text-brand-black px-4">
-          {text.repeat(4)}
-        </span>
+        <span className="font-display text-2xl uppercase text-brand-black px-4">{text.repeat(4)}</span>
+        <span className="font-display text-2xl uppercase text-brand-black px-4">{text.repeat(4)}</span>
       </div>
     </div>
   );
 }
 
+// ---------- Dynamic Menu ----------
+
 function Menu() {
-  const [cat, setCat] = useState("All");
-  const filtered = cat === "All" ? MENU : MENU.filter((m) => m.cat === cat);
+  const { data, isLoading, error } = useMenuData();
+  const [cat, setCat] = useState<string>("All");
+  const [modalItem, setModalItem] = useState<PublicMenuItem | null>(null);
+
+  const categories = useMemo(() => {
+    const fromDb = (data?.categories ?? []).map((c) => c.name);
+    return ["All", ...fromDb];
+  }, [data]);
+
+  const items = data?.items ?? [];
+  const filtered = cat === "All" ? items : items.filter((i) => i.category === cat);
 
   return (
     <section id="menu" className="py-24 md:py-32 px-6 max-w-7xl mx-auto">
@@ -277,7 +350,7 @@ function Menu() {
           </h2>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto font-mono text-[10px] uppercase font-bold flex-shrink-0">
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <button
               key={c}
               onClick={() => setCat(c)}
@@ -291,51 +364,281 @@ function Menu() {
         </div>
       </motion.div>
 
-      <motion.div
-        layout
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
-      >
-        <AnimatePresence mode="popLayout">
-          {filtered.map((item, i) => (
-            <motion.div
-              key={item.name}
-              layout
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: (i % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -6 }}
-              className="group bg-white p-6 hover:bg-brand-gold transition-colors duration-500 relative"
-            >
-              {item.tag && (
-                <div className={`absolute top-4 right-4 z-10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag === "Hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
-                  {item.tag}
-                </div>
-              )}
-              <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5">
-                <img
-                  src={item.img}
-                  alt={item.name}
-                  loading="lazy"
-                  width={640}
-                  height={640}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                />
-              </div>
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
-                <span className="font-mono text-sm font-bold">{item.price}</span>
-              </div>
-              <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.desc}</p>
-              <button onClick={() => addToCart(item.name)} className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2">
-                <Plus className="size-3" /> Add to Cart
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </motion.div>
+      {isLoading && (
+        <div className="flex items-center justify-center py-24 text-brand-black/50 font-mono text-xs uppercase tracking-widest">
+          <Loader2 className="size-4 animate-spin mr-3" /> Loading menu…
+        </div>
+      )}
+      {error && (
+        <div className="text-center py-16 font-mono text-xs uppercase text-brand-red">
+          Failed to load menu.
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <motion.div
+          layout
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
+        >
+          <AnimatePresence mode="popLayout">
+            {filtered.map((item, i) => (
+              <MenuCard key={item.id} item={item} index={i} onOpenOptions={() => setModalItem(item)} />
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      <AnimatePresence>
+        {modalItem && <OptionsModal item={modalItem} onClose={() => setModalItem(null)} />}
+      </AnimatePresence>
     </section>
+  );
+}
+
+function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index: number; onOpenOptions: () => void }) {
+  const hasVariants = item.variants.length > 0;
+  const hasAddons = item.addons.length > 0;
+  const needsOptions = hasVariants || hasAddons;
+
+  const priceLabel = hasVariants
+    ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
+    : formatPrice(item.price);
+
+  const handleQuickAdd = () => {
+    addEntry({
+      menuItemId: item.id,
+      name: item.name,
+      variantId: null,
+      variantName: null,
+      addonIds: [],
+      addonNames: [],
+      unitPrice: item.price,
+      quantity: 1,
+    });
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.6, delay: (index % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -6 }}
+      className="group bg-white p-6 hover:bg-brand-gold transition-colors duration-500 relative"
+    >
+      {item.tag && (
+        <div className={`absolute top-4 right-4 z-10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag.toLowerCase() === "hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
+          {item.tag}
+        </div>
+      )}
+      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5">
+        <img
+          src={resolveImg(item.imageKey)}
+          alt={item.name}
+          loading="lazy"
+          width={640}
+          height={640}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+        />
+      </div>
+      <div className="flex justify-between items-start mb-2 gap-3">
+        <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
+        <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>
+      </div>
+      <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.description}</p>
+      {needsOptions ? (
+        <button
+          onClick={onOpenOptions}
+          className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
+        >
+          <Settings2 className="size-3" /> Select Options
+        </button>
+      ) : (
+        <button
+          onClick={handleQuickAdd}
+          className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus className="size-3" /> Add to Cart
+        </button>
+      )}
+    </motion.div>
+  );
+}
+
+function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => void }) {
+  const hasVariants = item.variants.length > 0;
+  const [variantId, setVariantId] = useState<string | null>(hasVariants ? item.variants[0].id : null);
+  const [addonIds, setAddonIds] = useState<Set<string>>(new Set());
+  const [qty, setQty] = useState(1);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const variant: MenuVariant | null = hasVariants
+    ? item.variants.find((v) => v.id === variantId) ?? item.variants[0]
+    : null;
+  const selectedAddons: MenuAddon[] = item.addons.filter((a) => addonIds.has(a.id));
+
+  const basePrice = variant ? variant.price : item.price;
+  const addonsPrice = selectedAddons.reduce((s, a) => s + a.price, 0);
+  const unitPrice = basePrice + addonsPrice;
+  const total = unitPrice * qty;
+
+  const toggleAddon = (id: string) => {
+    setAddonIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAdd = () => {
+    const chosenAddons = selectedAddons;
+    const displayName = variant ? `${item.name} · ${variant.name}` : item.name;
+    addEntry({
+      menuItemId: item.id,
+      name: displayName,
+      variantId: variant ? variant.id : null,
+      variantName: variant ? variant.name : null,
+      addonIds: chosenAddons.map((a) => a.id),
+      addonNames: chosenAddons.map((a) => a.name),
+      unitPrice,
+      quantity: qty,
+    });
+    onClose();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[90] bg-brand-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-lg bg-white max-h-[92vh] overflow-y-auto shadow-2xl"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 size-9 grid place-items-center bg-brand-black text-white hover:bg-brand-red transition-colors z-10"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+
+        <div className="aspect-[16/9] overflow-hidden bg-stone-100">
+          <img src={resolveImg(item.imageKey)} alt={item.name} className="w-full h-full object-cover" />
+        </div>
+
+        <div className="p-6 md:p-8">
+          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-red mb-2">{item.category}</div>
+          <h3 className="font-display text-4xl uppercase tracking-tighter leading-none mb-3">{item.name}</h3>
+          <p className="text-sm text-brand-black/60 leading-relaxed mb-6">{item.description}</p>
+
+          {hasVariants && (
+            <div className="mb-6">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] mb-3">Choose Size</div>
+              <div className="grid grid-cols-2 gap-2">
+                {item.variants.map((v) => {
+                  const active = variant?.id === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => setVariantId(v.id)}
+                      className={`p-3 text-left border transition-colors ${
+                        active
+                          ? "border-brand-red bg-brand-red text-white"
+                          : "border-brand-black/10 hover:border-brand-black"
+                      }`}
+                    >
+                      <div className="font-bold uppercase text-sm tracking-tighter">{v.name}</div>
+                      <div className={`font-mono text-xs mt-1 ${active ? "text-white/80" : "text-brand-black/60"}`}>
+                        {formatPrice(v.price)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {item.addons.length > 0 && (
+            <div className="mb-6">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] mb-3">Add-ons (optional)</div>
+              <div className="space-y-2">
+                {item.addons.map((a) => {
+                  const active = addonIds.has(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => toggleAddon(a.id)}
+                      className={`w-full flex items-center justify-between p-3 border transition-colors text-left ${
+                        active
+                          ? "border-brand-black bg-brand-black text-white"
+                          : "border-brand-black/10 hover:border-brand-black"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`size-4 grid place-items-center border ${active ? "border-brand-gold bg-brand-gold text-brand-black" : "border-brand-black/30"}`}>
+                          {active && <Check className="size-3" />}
+                        </span>
+                        <span className="font-medium text-sm">{a.name}</span>
+                      </div>
+                      <span className={`font-mono text-xs font-bold ${active ? "text-brand-gold" : "text-brand-black/60"}`}>
+                        +{formatPrice(a.price)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-brand-black/10 pt-6 mb-6">
+            <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em]">Quantity</div>
+            <div className="flex items-center border border-brand-black/10">
+              <button
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                className="size-10 grid place-items-center hover:bg-brand-black hover:text-white transition-colors"
+                aria-label="Decrease"
+              >
+                <Minus className="size-3" />
+              </button>
+              <span className="w-12 text-center font-mono font-bold">{qty}</span>
+              <button
+                onClick={() => setQty((q) => Math.min(50, q + 1))}
+                className="size-10 grid place-items-center hover:bg-brand-black hover:text-white transition-colors"
+                aria-label="Increase"
+              >
+                <Plus className="size-3" />
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={handleAdd}
+            className="w-full py-4 bg-brand-red text-white font-bold uppercase tracking-tighter text-sm hover:bg-brand-black transition-colors flex items-center justify-between px-6"
+          >
+            <span className="flex items-center gap-2"><Plus className="size-4" /> Add to Cart</span>
+            <span className="font-mono">{formatPrice(total)}</span>
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -724,54 +1027,18 @@ function Footer() {
 
 // ---------- AI Recommendations ----------
 
-const CART_KEY = "pff:cart";
-const PAST_KEY = "pff:past";
-
-function readList(key: string): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(key) || "[]");
-  } catch {
-    return [];
-  }
-}
-function writeList(key: string, v: string[]) {
-  localStorage.setItem(key, JSON.stringify(v));
-  window.dispatchEvent(new CustomEvent("pff:storage"));
-}
-function addToCart(name: string) {
-  const c = readList(CART_KEY);
-  if (!c.includes(name)) c.push(name);
-  writeList(CART_KEY, c);
-}
-
-function useCartState() {
-  const [cart, setCart] = useState<string[]>([]);
-  const [past, setPast] = useState<string[]>([]);
-  useEffect(() => {
-    const sync = () => {
-      setCart(readList(CART_KEY));
-      setPast(readList(PAST_KEY));
-    };
-    sync();
-    window.addEventListener("pff:storage", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("pff:storage", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-  return { cart, past, setCart, setPast };
-}
-
 type Pick = { name: string; reason: string };
 
 function AiRecommendations() {
   const { cart, past } = useCartState();
+  const { data: menu } = useMenuData();
   const [picks, setPicks] = useState<Pick[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recommend = useServerFn(recommendDishes);
+
+  const menuItems = menu?.items ?? [];
+  const menuNames = menuItems.map((m) => m.name);
 
   const getPicks = useCallback(async () => {
     setLoading(true);
@@ -779,9 +1046,9 @@ function AiRecommendations() {
     try {
       const result = await recommend({
         data: {
-          cart,
-          pastOrders: past,
-          menu: MENU.map((m) => m.name),
+          cart: cart.map((c) => c.name),
+          pastOrders: past.map((c) => c.name),
+          menu: menuNames,
         },
       });
       setPicks(result.picks);
@@ -790,16 +1057,21 @@ function AiRecommendations() {
     } finally {
       setLoading(false);
     }
-  }, [cart, past, recommend]);
+  }, [cart, past, menuNames, recommend]);
 
   const moveCartToPast = () => {
-    const merged = Array.from(new Set([...past, ...cart]));
-    writeList(PAST_KEY, merged.slice(-30));
-    writeList(CART_KEY, []);
+    const merged = [...past];
+    for (const c of cart) {
+      if (!merged.find((m) => m.key === c.key)) merged.push(c);
+    }
+    writeCart(PAST_KEY, merged.slice(-30));
+    writeCart(CART_KEY, []);
   };
-  const removeFromCart = (n: string) => writeList(CART_KEY, cart.filter((x) => x !== n));
-  const removeFromPast = (n: string) => writeList(PAST_KEY, past.filter((x) => x !== n));
-  const lookup = (n: string) => MENU.find((m) => m.name === n);
+  const removeFromCart = (k: string) => writeCart(CART_KEY, cart.filter((x) => x.key !== k));
+  const removeFromPast = (k: string) => writeCart(PAST_KEY, past.filter((x) => x.key !== k));
+  const lookupByName = (n: string) => menuItems.find((m) => m.name === n);
+
+  const cartTotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
 
   return (
     <section id="ai" className="relative py-24 md:py-32 px-6 bg-gradient-to-b from-white via-brand-cream to-white overflow-hidden">
@@ -826,7 +1098,7 @@ function AiRecommendations() {
 
         <div className="grid lg:grid-cols-2 gap-4 mb-8">
           <CartPanel
-            title="Your Cart"
+            title={`Your Cart · ${formatPrice(cartTotal)}`}
             empty="Add items from the menu above to personalize your picks."
             items={cart}
             onRemove={removeFromCart}
@@ -844,7 +1116,7 @@ function AiRecommendations() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
           <button
             onClick={getPicks}
-            disabled={loading}
+            disabled={loading || menuNames.length === 0}
             className="group relative px-8 py-4 bg-brand-black text-white font-bold uppercase tracking-tighter overflow-hidden disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
@@ -876,7 +1148,12 @@ function AiRecommendations() {
               className="grid md:grid-cols-3 gap-4"
             >
               {picks.map((p, i) => {
-                const item = lookup(p.name);
+                const item = lookupByName(p.name);
+                const priceLabel = item
+                  ? item.variants.length > 0
+                    ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
+                    : formatPrice(item.price)
+                  : "";
                 return (
                   <motion.div
                     key={p.name}
@@ -890,18 +1167,43 @@ function AiRecommendations() {
                     </div>
                     {item && (
                       <div className="aspect-[4/3] overflow-hidden bg-stone-100">
-                        <img src={item.img} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        <img src={resolveImg(item.imageKey)} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                       </div>
                     )}
                     <div className="p-5">
                       <div className="flex justify-between items-start mb-2 gap-3">
                         <h3 className="font-display text-2xl uppercase leading-none">{p.name}</h3>
-                        {item && <span className="font-mono text-sm font-bold whitespace-nowrap">{item.price}</span>}
+                        {item && <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>}
                       </div>
                       <p className="text-xs text-brand-black/60 leading-relaxed mb-5 italic">"{p.reason}"</p>
-                      <button onClick={() => addToCart(p.name)} className="w-full py-3 bg-brand-red text-white text-[10px] font-bold uppercase tracking-widest hover:bg-brand-black transition-colors flex items-center justify-center gap-2">
-                        <Plus className="size-3" /> Add to Cart
-                      </button>
+                      {item && (
+                        <button
+                          onClick={() => {
+                            if (item.variants.length > 0 || item.addons.length > 0) {
+                              // Scroll to menu — user will pick options there
+                              document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
+                            } else {
+                              addEntry({
+                                menuItemId: item.id,
+                                name: item.name,
+                                variantId: null,
+                                variantName: null,
+                                addonIds: [],
+                                addonNames: [],
+                                unitPrice: item.price,
+                                quantity: 1,
+                              });
+                            }
+                          }}
+                          className="w-full py-3 bg-brand-red text-white text-[10px] font-bold uppercase tracking-widest hover:bg-brand-black transition-colors flex items-center justify-center gap-2"
+                        >
+                          {item.variants.length > 0 || item.addons.length > 0 ? (
+                            <><Settings2 className="size-3" /> Select Options</>
+                          ) : (
+                            <><Plus className="size-3" /> Add to Cart</>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -914,7 +1216,7 @@ function AiRecommendations() {
   );
 }
 
-function CartPanel({ title, empty, items, onRemove, accent }: { title: string; empty: string; items: string[]; onRemove: (n: string) => void; accent: string }) {
+function CartPanel({ title, empty, items, onRemove, accent }: { title: string; empty: string; items: CartEntry[]; onRemove: (k: string) => void; accent: string }) {
   return (
     <div className="border border-brand-black/10 bg-white p-5">
       <div className="flex items-center justify-between mb-3">
@@ -925,14 +1227,19 @@ function CartPanel({ title, empty, items, onRemove, accent }: { title: string; e
         <p className="text-xs text-brand-black/50 leading-relaxed">{empty}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {items.map((n) => (
-            <span key={n} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-brand-black/5 text-xs font-medium">
-              {n}
-              <button onClick={() => onRemove(n)} className="size-5 grid place-items-center rounded-full hover:bg-brand-red hover:text-white transition-colors" aria-label={`Remove ${n}`}>
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
+          {items.map((e) => {
+            const label = e.addonNames.length > 0 ? `${e.name} + ${e.addonNames.join(", ")}` : e.name;
+            return (
+              <span key={e.key} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-brand-black/5 text-xs font-medium">
+                <span className="font-mono text-[10px] font-bold text-brand-red">×{e.quantity}</span>
+                {label}
+                <span className="font-mono text-[10px] text-brand-black/50">{formatPrice(e.unitPrice * e.quantity)}</span>
+                <button onClick={() => onRemove(e.key)} className="size-5 grid place-items-center rounded-full hover:bg-brand-red hover:text-white transition-colors" aria-label={`Remove ${e.name}`}>
+                  <X className="size-3" />
+                </button>
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
