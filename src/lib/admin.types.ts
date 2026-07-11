@@ -21,7 +21,16 @@ export type AdminOrder = {
   status: string;
   notes: string | null;
   createdAt: string;
-  items: unknown;
+  items: Array<{
+    menuItemId: string;
+    name: string;
+    variantId: string | null;
+    variantName: string | null;
+    addons: Array<{ id: string; name: string; price: number }>;
+    unitPrice: number;
+    quantity: number;
+    lineTotal: number;
+  }>;
 };
 
 export type AdminCategory = {
