@@ -166,7 +166,7 @@ export async function loadAdminDashboard(
       status: order.status,
       notes: order.notes,
       createdAt: order.created_at,
-      items: order.items,
+      items: (Array.isArray(order.items) ? order.items : []) as AdminOrder["items"],
     })),
     categories: (catResult.data ?? []).map((c) => ({
       id: c.id,
