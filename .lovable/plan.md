@@ -1,70 +1,66 @@
+# Punjab Fast Food — Admin Panel + Order Flow
 
-## Goal
+Sequenced across two turns. This turn = admin panel. Next turn = order flow + WhatsApp CTAs.
 
-Refactor the menu so products, categories, variants, and add-ons all live in the database and are ready to be managed from the admin panel later. Keep the current UI/animations intact — only change what a product card renders when variants exist, and add an option-picker modal.
+## Turn 1 — Admin Panel (this turn)
 
-## Data model (new migration)
+### Database (one migration)
 
-Add four tables (all with GRANTs + RLS, admin-only writes, public read for `active = true`):
+New tables, all with GRANTs + RLS (public SELECT where `active`/`visible = true`; admin-only writes via `has_role`):
 
-```text
-categories          menu_items (extend)
-  id                  category_id  → categories.id  (replaces text `category`)
-  name                (keep other columns)
-  slug
-  display_order
-  active
+- `offers` — title, description, image_key, discount_label, starts_at, ends_at, active, display_order
+- `gallery_images` — image_key, caption, display_order, active
+- `testimonials` — customer_name, rating (1-5), review, image_key, active, display_order
+- `hero_content` — single-row key/value: heading, subheading, cta_text, background_key, banner_key (singleton row, `id = 'default'`)
+- `business_settings` — single-row: restaurant_name, logo_key, phone, whatsapp_number, email, address, maps_url, hours (jsonb), delivery_charges, min_order, social (jsonb)
 
-variants                        addons
-  id                              id
-  menu_item_id → menu_items.id    menu_item_id → menu_items.id
-  name (e.g. "Small", "500ml")    name (e.g. "Extra Cheese")
-  price (numeric)                 price (numeric)     -- additional
-  available (bool)                available (bool)
-  display_order                   display_order
-```
+Storage: create public `menu-images` bucket for all uploaded images (menu, hero, offers, gallery, testimonials, logo). RLS: anyone can read; only admins write.
 
-RLS: anon+authenticated `SELECT` where `active`/`available` is true (or via parent item); admins full write. `menu_items.price` stays as the "base/single price" used when a product has no variants.
+Seed hero + business_settings with the current site's copy and `whatsapp_number = '923017160216'` so nothing goes blank.
 
-## Server layer
+### Server layer
 
-- Public read: extend the existing menu fetch (used by home) to return each item with its `variants[]` and `addons[]` (only available ones for the public surface). Admin dashboard loader returns everything, including inactive.
-- `createCustomerOrder` (in `src/lib/orders.functions.ts`): accept
-  ```ts
-  items: [{ menuItemId, variantId?: string, addonIds?: string[], quantity }]
-  ```
-  Server looks up base price OR variant price, sums selected add-on prices, computes `lineTotal = (unit + addonsTotal) * quantity`, and stores a resolved snapshot in `orders.items` (name, variant name, add-on names, unit price). Client-submitted prices remain ignored.
-- Admin server fns: add create/update/delete for `categories`, `variants`, `addons` mirroring the existing `createMenuItem`/`updateMenuItem` pattern. Schemas added in `src/lib/admin.schemas.ts`. (Admin UI wiring is out of scope for this task — just prepare the server surface so the future admin panel plugs in without code changes to the storefront.)
+- `src/lib/admin.schemas.ts` — Zod schemas: Category, Variant, Addon (exist), plus Offer, Gallery, Testimonial, Hero, BusinessSettings.
+- `src/lib/admin.functions.ts` — CRUD server fns for every entity (all `.middleware([requireSupabaseAuth])` + `requireAdmin`). Each returns a fresh dashboard snapshot for cache-free UI.
+- `src/lib/admin.server.ts` — extend `loadAdminDashboard` to return everything (categories, variants, addons, offers, gallery, testimonials, hero, settings, orders, stats).
+- `src/lib/menu.functions.ts` — extend public `getMenu` to also return hero, offers, gallery, testimonials, business settings so the storefront reads from DB.
+- Image upload: server fn `uploadImage` that takes base64 + filename, writes to Supabase Storage via `supabaseAdmin`, returns public URL. Client compresses + base64-encodes before send.
 
-## Storefront UI (no visual redesign)
+### Admin UI (`src/routes/_authenticated/admin.tsx`)
 
-`src/routes/index.tsx`:
+Tabbed layout matching brand tokens (Anton headings, red/orange/gold, existing card styling):
 
-- Replace the hardcoded `menuItems` array with data fetched from the new public loader (categories + items with variants/addons). Category filter chips read from `categories` table.
-- Product card logic:
-  - `variants.length === 0` → show single price + existing "Add to cart" button (unchanged look).
-  - `variants.length >= 1` OR `addons.length >= 1` → same card, but the CTA becomes **"Select Options"** (same button styling, just different label + handler).
-  - Price label shows `From $X.XX` when variants exist (cheapest available variant), otherwise the flat price. Same typography.
-- New `<OptionsModal>` component (shadcn `Dialog`, styled with existing brand tokens — red/orange/gold, Anton headings, same borders/shadows as current cards):
-  - Radio list of variants (name + price, disabled if unavailable).
-  - Checkbox list of add-ons (name + `+$X.XX`).
-  - Quantity stepper.
-  - Live total.
-  - "Add to Cart" confirms and calls the updated `addToCart`.
-- Cart state (localStorage) shape upgraded to `{ menuItemId, variantId?, addonIds[], quantity }`. Cart panel renders resolved name + selected options; totals recomputed from the loaded menu. A tiny migration step drops any legacy string entries on first load.
-- Best Combos + AI recommendations keep working — they read `menuItemId` from the same cart entries.
+1. **Dashboard** — Total orders, today's orders, revenue, popular items (aggregated from order items), recent orders list.
+2. **Menu** — table of items; row expands to manage variants + addons inline; image upload; category dropdown; active/featured toggles; display order.
+3. **Categories** — reorderable list, add/edit/delete, show/hide.
+4. **Hero** — form for heading/subheading/CTA + two image uploads.
+5. **Offers** — CRUD with image, date pickers, discount label, active toggle.
+6. **Gallery** — upload grid, reorder, delete.
+7. **Testimonials** — CRUD list.
+8. **Settings** — business info form + hours + socials.
+9. **Orders** — list with status dropdown (new/preparing/ready/delivered/cancelled).
 
-## Seeding
+All forms use react-hook-form + zod, shadcn Dialog/Sheet for edit modals, optimistic-ish refresh via router.invalidate().
 
-One-time SQL insert to move the current 8 hardcoded items into `categories` + `menu_items`, with example variants on Pizza (Regular / Large / Family) and Fries (Regular / Large), and example add-ons (Extra Cheese, Extra Chicken, Extra Sauce). Everything else stays single-price so the UI keeps the current "add to cart" button.
+### Storefront wiring (minimal — no visual redesign)
 
-## Files touched
+`src/routes/index.tsx` reads hero/offers/gallery/testimonials/settings from the extended `getMenu` loader. Falls back to current defaults if a field is empty so the site never looks broken while admin is empty. No layout/animation changes.
 
-- New migration (tables, GRANTs, RLS, seed).
-- `src/lib/menu.types.ts` (shared `MenuItem`, `Variant`, `Addon`, `Category`).
-- `src/lib/menu.functions.ts` (public `getMenu` server fn).
-- `src/lib/orders.functions.ts` (variant/addon-aware pricing).
-- `src/lib/admin.schemas.ts` + `src/lib/admin.functions.ts` + `src/lib/admin.server.ts` (CRUD for categories/variants/addons + include them in dashboard snapshot).
-- `src/routes/index.tsx` (data-driven menu, new `OptionsModal`, updated cart shape).
+## Turn 2 — Order flow + WhatsApp (next message)
 
-No changes to colors, fonts, spacing, section layout, or animations.
+- Rename cart CTA to "Customize & Order"; single-price items skip variant step and go straight to a compact order summary sheet.
+- Unified `buildWhatsAppMessage(items, settings)` util.
+- Two entry points: per-item quick order from the modal + cart-wide checkout button, both open `https://wa.me/{settings.whatsapp_number}?text=...` (defaults to 923017160216).
+- Fix every WhatsApp CTA (Hero, floating button, footer, contact, menu, checkout) to use the same helper.
+- Verify handlers on desktop + mobile via Playwright screenshots.
+
+### Technical notes
+
+- Storage bucket created via `supabase--storage_create_bucket` tool, not SQL.
+- `hero_content` and `business_settings` use a fixed singleton row (`id text primary key default 'default'`) so updates are idempotent upserts.
+- All new admin fns require `has_role(auth.uid(),'admin')` — no anon writes anywhere.
+- Public SELECT policies gated on `active = true` so hiding an item hides it site-wide instantly.
+- Existing `menu_items.category` text column stays for back-compat; new code uses `category_id`.
+- Image compression client-side (max 1600px, jpeg 0.85) before upload to keep payloads small.
+
+Approve and I'll build turn 1 end-to-end, then ping you to greenlight turn 2.
