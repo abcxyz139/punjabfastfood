@@ -1003,7 +1003,9 @@ function Contact() {
           </div>
 
           <a
-            href="https://wa.me/12345678900"
+            href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to make an enquiry.`)}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-6 py-4 bg-green-600 text-white font-bold uppercase tracking-tighter text-sm hover:bg-green-700 transition-colors"
           >
             <MessageCircle className="size-4" /> Chat on WhatsApp
