@@ -1051,8 +1051,12 @@ function Footer() {
             Bringing the energetic spirit of the Grand Trunk Road to your neighborhood. Fast food, real soul.
           </p>
           <div className="flex gap-3">
-            {[Instagram, Facebook, MessageCircle].map((Icon, i) => (
-              <a key={i} href="#" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
+            {[
+              { Icon: Instagram, href: "#" },
+              { Icon: Facebook, href: "#" },
+              { Icon: MessageCircle, href: waUrl(`Hi ${RESTAURANT_NAME}!`) },
+            ].map(({ Icon, href }, i) => (
+              <a key={i} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
                 <Icon className="size-4" />
               </a>
             ))}
