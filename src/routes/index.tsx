@@ -140,32 +140,28 @@ function addEntry(entry: Omit<CartEntry, "key">) {
   writeCart(CART_KEY, cart);
 }
 
-function useCartState() {
-  const [cart, setCart] = useState<CartEntry[]>([]);
-  const [past, setPast] = useState<CartEntry[]>([]);
-  useEffect(() => {
-    const sync = () => {
-      setCart(readCart(CART_KEY));
-      setPast(readCart(PAST_KEY));
-    };
-    sync();
-    window.addEventListener("pff:storage", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("pff:storage", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-  return { cart, past, setCart, setPast };
+function updateCartQty(key: string, delta: number) {
+  const cart = readCart(CART_KEY);
+  const idx = cart.findIndex((e) => e.key === key);
+  if (idx < 0) return;
+  const next = cart[idx].quantity + delta;
+  if (next <= 0) cart.splice(idx, 1);
+  else cart[idx] = { ...cart[idx], quantity: next };
+  writeCart(CART_KEY, cart);
+}
+
+function removeCartEntry(key: string) {
+  writeCart(CART_KEY, readCart(CART_KEY).filter((e) => e.key !== key));
 }
 
 // ---------- Page ----------
 
 function Home() {
+  const [cartOpen, setCartOpen] = useState(false);
   return (
     <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
       <LoadingScreen />
-      <Nav />
+      <Nav onOpenCart={() => setCartOpen(true)} />
       <Hero />
       <Marquee />
       <Menu />
@@ -176,6 +172,8 @@ function Home() {
       <Gallery />
       <Contact />
       <Footer />
+      <FloatingActions onOpenCart={() => setCartOpen(true)} />
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   );
 }
