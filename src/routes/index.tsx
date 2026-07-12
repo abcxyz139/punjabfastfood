@@ -154,6 +154,25 @@ function removeCartEntry(key: string) {
   writeCart(CART_KEY, readCart(CART_KEY).filter((e) => e.key !== key));
 }
 
+function useCartState() {
+  const [cart, setCart] = useState<CartEntry[]>([]);
+  const [past, setPast] = useState<CartEntry[]>([]);
+  useEffect(() => {
+    const sync = () => {
+      setCart(readCart(CART_KEY));
+      setPast(readCart(PAST_KEY));
+    };
+    sync();
+    window.addEventListener("pff:storage", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("pff:storage", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+  return { cart, past, setCart, setPast };
+}
+
 // ---------- Page ----------
 
 function Home() {
