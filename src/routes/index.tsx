@@ -3,10 +3,43 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2 } from "lucide-react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2 } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
 import { getPublicMenu } from "@/lib/menu.functions";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
+
+// ---------- Restaurant constants (WhatsApp order flow) ----------
+const RESTAURANT_NAME = "Punjab Fast Food";
+const WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
+const DELIVERY_CHARGES = 2.5;
+
+function waUrl(text?: string) {
+  return text ? `${WHATSAPP_LINK}?text=${encodeURIComponent(text)}` : WHATSAPP_LINK;
+}
+
+function buildOrderMessage(
+  items: CartEntry[],
+  customer: { name: string; phone: string; address: string; notes: string },
+  totals: { subtotal: number; delivery: number; total: number },
+) {
+  const lines: string[] = [];
+  lines.push(`*New Order — ${RESTAURANT_NAME}*`, "");
+  lines.push(`*Customer:* ${customer.name}`);
+  lines.push(`*Phone:* ${customer.phone}`);
+  if (customer.address) lines.push(`*Address:* ${customer.address}`);
+  lines.push("", "*Order:*");
+  items.forEach((i, idx) => {
+    lines.push(`${idx + 1}. ${i.name} × ${i.quantity} — $${(i.unitPrice * i.quantity).toFixed(2)}`);
+    if (i.addonNames.length > 0) lines.push(`   Add-ons: ${i.addonNames.join(", ")}`);
+  });
+  lines.push("", `*Subtotal:* $${totals.subtotal.toFixed(2)}`);
+  lines.push(`*Delivery:* $${totals.delivery.toFixed(2)}`);
+  lines.push(`*Total:* $${totals.total.toFixed(2)}`);
+  if (customer.notes) lines.push("", `*Notes:* ${customer.notes}`);
+  lines.push("", "Please confirm my order. Thank you!");
+  return lines.join("\n");
+}
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
@@ -107,6 +140,20 @@ function addEntry(entry: Omit<CartEntry, "key">) {
   writeCart(CART_KEY, cart);
 }
 
+function updateCartQty(key: string, delta: number) {
+  const cart = readCart(CART_KEY);
+  const idx = cart.findIndex((e) => e.key === key);
+  if (idx < 0) return;
+  const next = cart[idx].quantity + delta;
+  if (next <= 0) cart.splice(idx, 1);
+  else cart[idx] = { ...cart[idx], quantity: next };
+  writeCart(CART_KEY, cart);
+}
+
+function removeCartEntry(key: string) {
+  writeCart(CART_KEY, readCart(CART_KEY).filter((e) => e.key !== key));
+}
+
 function useCartState() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [past, setPast] = useState<CartEntry[]>([]);
@@ -129,10 +176,11 @@ function useCartState() {
 // ---------- Page ----------
 
 function Home() {
+  const [cartOpen, setCartOpen] = useState(false);
   return (
     <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
       <LoadingScreen />
-      <Nav />
+      <Nav onOpenCart={() => setCartOpen(true)} />
       <Hero />
       <Marquee />
       <Menu />
@@ -143,6 +191,8 @@ function Home() {
       <Gallery />
       <Contact />
       <Footer />
+      <FloatingActions onOpenCart={() => setCartOpen(true)} />
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   );
 }
@@ -182,8 +232,10 @@ function LoadingScreen() {
   );
 }
 
-function Nav() {
+function Nav({ onOpenCart }: { onOpenCart: () => void }) {
   const [scrolled, setScrolled] = useState(false);
+  const { cart } = useCartState();
+  const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", on);
@@ -209,9 +261,17 @@ function Nav() {
           </a>
         ))}
       </div>
-      <a href="#menu" className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
-        <ShoppingBag className="size-3.5" /> Order Now
-      </a>
+      <button
+        onClick={onOpenCart}
+        className="relative bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2"
+      >
+        <ShoppingBag className="size-3.5" /> Cart
+        {cartCount > 0 && (
+          <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 grid place-items-center bg-brand-gold text-brand-black font-mono text-[10px] font-bold rounded-full">
+            {cartCount}
+          </span>
+        )}
+      </button>
     </motion.nav>
   );
 }
@@ -943,7 +1003,9 @@ function Contact() {
           </div>
 
           <a
-            href="https://wa.me/12345678900"
+            href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to make an enquiry.`)}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-6 py-4 bg-green-600 text-white font-bold uppercase tracking-tighter text-sm hover:bg-green-700 transition-colors"
           >
             <MessageCircle className="size-4" /> Chat on WhatsApp
@@ -989,8 +1051,12 @@ function Footer() {
             Bringing the energetic spirit of the Grand Trunk Road to your neighborhood. Fast food, real soul.
           </p>
           <div className="flex gap-3">
-            {[Instagram, Facebook, MessageCircle].map((Icon, i) => (
-              <a key={i} href="#" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
+            {[
+              { Icon: Instagram, href: "#" },
+              { Icon: Facebook, href: "#" },
+              { Icon: MessageCircle, href: waUrl(`Hi ${RESTAURANT_NAME}!`) },
+            ].map(({ Icon, href }, i) => (
+              <a key={i} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
                 <Icon className="size-4" />
               </a>
             ))}
@@ -1243,5 +1309,174 @@ function CartPanel({ title, empty, items, onRemove, accent }: { title: string; e
         </div>
       )}
     </div>
+  );
+}
+
+// ---------- Floating actions (cart + WhatsApp) ----------
+
+function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
+  const [mounted, setMounted] = useState(false);
+  const { cart } = useCartState();
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  const count = cart.reduce((s, c) => s + c.quantity, 0);
+  return (
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+      <a
+        href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to place an order.`)}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat on WhatsApp"
+        className="size-14 rounded-full bg-green-600 hover:bg-green-500 text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
+      >
+        <MessageCircle className="size-6" />
+      </a>
+      <button
+        onClick={onOpenCart}
+        aria-label="Open cart"
+        className="relative size-14 rounded-full bg-brand-red hover:bg-brand-orange text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
+      >
+        <ShoppingBag className="size-6" />
+        {count > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-6 h-6 px-1.5 grid place-items-center bg-brand-gold text-brand-black font-mono text-xs font-bold rounded-full">
+            {count}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ---------- Cart drawer + checkout ----------
+
+function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { cart } = useCartState();
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    if (open) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
+  const delivery = cart.length > 0 ? DELIVERY_CHARGES : 0;
+  const total = subtotal + delivery;
+
+  const handleOrder = () => {
+    setFormError(null);
+    if (cart.length === 0) return setFormError("Your cart is empty.");
+    if (!name.trim()) return setFormError("Please enter your name.");
+    if (!phone.trim()) return setFormError("Please enter your phone number.");
+    if (!address.trim()) return setFormError("Please enter your delivery address.");
+    const msg = buildOrderMessage(
+      cart,
+      { name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() },
+      { subtotal, delivery, total },
+    );
+    window.open(waUrl(msg), "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[95] bg-brand-black/60 backdrop-blur-sm flex justify-end"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-brand-black/10">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-brand-red">Your Cart</div>
+                <div className="font-display text-2xl uppercase tracking-tighter">{cart.length} item{cart.length === 1 ? "" : "s"}</div>
+              </div>
+              <button onClick={onClose} className="size-9 grid place-items-center bg-brand-black text-white hover:bg-brand-red transition-colors" aria-label="Close">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {cart.length === 0 ? (
+                <div className="py-16 text-center">
+                  <ShoppingBag className="size-10 text-brand-black/20 mx-auto mb-4" />
+                  <p className="font-mono text-xs uppercase tracking-widest text-brand-black/50">Cart is empty</p>
+                  <button onClick={onClose} className="mt-6 px-6 py-3 bg-brand-red text-white font-bold uppercase text-xs tracking-tighter hover:bg-brand-black transition-colors">
+                    Browse Menu
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cart.map((e) => (
+                    <div key={e.key} className="border border-brand-black/10 p-3">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm">{e.name}</div>
+                          {e.addonNames.length > 0 && (
+                            <div className="font-mono text-[10px] uppercase text-brand-black/50 mt-1">+ {e.addonNames.join(", ")}</div>
+                          )}
+                          <div className="font-mono text-xs text-brand-black/60 mt-1">{formatPrice(e.unitPrice)} each</div>
+                        </div>
+                        <button onClick={() => removeCartEntry(e.key)} aria-label="Remove" className="text-brand-black/40 hover:text-brand-red">
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center border border-brand-black/10">
+                          <button onClick={() => updateCartQty(e.key, -1)} className="size-8 grid place-items-center hover:bg-brand-black hover:text-white transition-colors" aria-label="Decrease"><Minus className="size-3" /></button>
+                          <span className="w-10 text-center font-mono font-bold text-sm">{e.quantity}</span>
+                          <button onClick={() => updateCartQty(e.key, 1)} className="size-8 grid place-items-center hover:bg-brand-black hover:text-white transition-colors" aria-label="Increase"><Plus className="size-3" /></button>
+                        </div>
+                        <div className="font-mono font-bold text-sm">{formatPrice(e.unitPrice * e.quantity)}</div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="pt-4 mt-4 border-t border-brand-black/10 space-y-3">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/50">Delivery Details</div>
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone Number *" type="tel" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
+                    <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery Address *" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors resize-none" />
+                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors resize-none" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="border-t border-brand-black/10 px-6 py-4 space-y-2 bg-brand-cream">
+                <div className="flex justify-between text-sm"><span className="text-brand-black/60">Subtotal</span><span className="font-mono font-bold">{formatPrice(subtotal)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-brand-black/60">Delivery</span><span className="font-mono font-bold">{formatPrice(delivery)}</span></div>
+                <div className="flex justify-between items-baseline pt-2 border-t border-brand-black/10">
+                  <span className="font-display text-xl uppercase tracking-tighter">Total</span>
+                  <span className="font-display text-3xl tracking-tighter text-brand-red">{formatPrice(total)}</span>
+                </div>
+                {formError && <div className="text-xs text-brand-red font-mono">{formError}</div>}
+                <button
+                  onClick={handleOrder}
+                  className="w-full mt-2 py-4 bg-green-600 hover:bg-green-500 text-white font-bold uppercase tracking-tighter text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+                >
+                  <MessageCircle className="size-4" /> Order on WhatsApp
+                </button>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-brand-black/40 text-center">Opens WhatsApp with your order</p>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
