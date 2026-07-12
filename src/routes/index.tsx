@@ -232,8 +232,10 @@ function LoadingScreen() {
   );
 }
 
-function Nav() {
+function Nav({ onOpenCart }: { onOpenCart: () => void }) {
   const [scrolled, setScrolled] = useState(false);
+  const { cart } = useCartState();
+  const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 30);
     window.addEventListener("scroll", on);
@@ -259,9 +261,17 @@ function Nav() {
           </a>
         ))}
       </div>
-      <a href="#menu" className="bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2">
-        <ShoppingBag className="size-3.5" /> Order Now
-      </a>
+      <button
+        onClick={onOpenCart}
+        className="relative bg-brand-red text-white px-5 py-2.5 text-xs font-bold uppercase tracking-tighter hover:bg-brand-orange transition-all active:scale-95 flex items-center gap-2"
+      >
+        <ShoppingBag className="size-3.5" /> Cart
+        {cartCount > 0 && (
+          <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 grid place-items-center bg-brand-gold text-brand-black font-mono text-[10px] font-bold rounded-full">
+            {cartCount}
+          </span>
+        )}
+      </button>
     </motion.nav>
   );
 }
