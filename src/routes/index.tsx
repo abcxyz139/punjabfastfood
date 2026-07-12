@@ -3,10 +3,43 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2 } from "lucide-react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2 } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
 import { getPublicMenu } from "@/lib/menu.functions";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
+
+// ---------- Restaurant constants (WhatsApp order flow) ----------
+const RESTAURANT_NAME = "Punjab Fast Food";
+const WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
+const DELIVERY_CHARGES = 2.5;
+
+function waUrl(text?: string) {
+  return text ? `${WHATSAPP_LINK}?text=${encodeURIComponent(text)}` : WHATSAPP_LINK;
+}
+
+function buildOrderMessage(
+  items: CartEntry[],
+  customer: { name: string; phone: string; address: string; notes: string },
+  totals: { subtotal: number; delivery: number; total: number },
+) {
+  const lines: string[] = [];
+  lines.push(`*New Order — ${RESTAURANT_NAME}*`, "");
+  lines.push(`*Customer:* ${customer.name}`);
+  lines.push(`*Phone:* ${customer.phone}`);
+  if (customer.address) lines.push(`*Address:* ${customer.address}`);
+  lines.push("", "*Order:*");
+  items.forEach((i, idx) => {
+    lines.push(`${idx + 1}. ${i.name} × ${i.quantity} — $${(i.unitPrice * i.quantity).toFixed(2)}`);
+    if (i.addonNames.length > 0) lines.push(`   Add-ons: ${i.addonNames.join(", ")}`);
+  });
+  lines.push("", `*Subtotal:* $${totals.subtotal.toFixed(2)}`);
+  lines.push(`*Delivery:* $${totals.delivery.toFixed(2)}`);
+  lines.push(`*Total:* $${totals.total.toFixed(2)}`);
+  if (customer.notes) lines.push("", `*Notes:* ${customer.notes}`);
+  lines.push("", "Please confirm my order. Thank you!");
+  return lines.join("\n");
+}
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
