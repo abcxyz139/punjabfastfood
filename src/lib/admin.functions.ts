@@ -101,6 +101,18 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
     return loadAdminDashboard(context.supabase, context.userId);
   });
 
+export const deleteOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DeleteByIdSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.from("orders").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return loadAdminDashboard(context.supabase, context.userId);
+  });
+
+
+
 /* --------------------------------- Categories ----------------------------- */
 
 export const upsertCategory = createServerFn({ method: "POST" })
