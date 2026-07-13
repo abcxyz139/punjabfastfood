@@ -791,19 +791,42 @@ function TestimonialsTab({ items, refresh, setMessage, saving, setSaving }: TabP
 
 function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminOrder>) {
   const up = useServerFn(updateOrderStatus);
+  const del = useServerFn(deleteOrder);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const filtered = items.filter((o) => {
+    if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (!query.trim()) return true;
+    const q = query.trim().toLowerCase();
+    return (
+      o.customerName.toLowerCase().includes(q) ||
+      o.customerPhone.toLowerCase().includes(q) ||
+      o.id.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <Card>
-      <h2 className="font-display text-3xl uppercase tracking-tighter mb-4">Orders</h2>
-      {items.length === 0 ? (
-        <p className="text-brand-black/50 text-sm">No orders yet.</p>
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
+        <h2 className="font-display text-3xl uppercase tracking-tighter">Orders</h2>
+        <div className="flex gap-2 items-center">
+          <TextInput placeholder="Search name, phone, id…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs">
+            {["all", "new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-brand-black/50 text-sm">No orders match.</p>
       ) : (
         <div className="space-y-3">
-          {items.map((o) => (
+          {filtered.map((o) => (
             <div key={o.id} className="border border-brand-black/10 p-4">
               <div className="grid md:grid-cols-[1fr_auto] gap-3">
                 <div>
                   <div className="font-bold">{o.customerName} · {o.customerPhone}</div>
-                  <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()}</div>
+                  <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()} · #{o.id.slice(0, 8)}</div>
                   <div className="mt-2 font-display text-3xl text-brand-red">${o.total.toFixed(2)}</div>
                   {o.items.length > 0 && (
                     <ul className="mt-2 text-xs text-brand-black/70 space-y-0.5">
@@ -814,14 +837,26 @@ function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<A
                   )}
                   {o.notes && <div className="mt-2 text-xs italic text-brand-black/50">Note: {o.notes}</div>}
                 </div>
-                <select
-                  value={o.status}
-                  onChange={(e) => runAction(() => up({ data: { id: o.id, status: e.target.value as "new" | "preparing" | "ready" | "completed" | "cancelled" } }), { refresh, setMessage, setSaving, okText: "Status updated." })}
-                  disabled={saving}
-                  className="self-start border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs"
-                >
-                  {["new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <div className="flex flex-col gap-2 items-end self-start">
+                  <select
+                    value={o.status}
+                    onChange={(e) => runAction(() => up({ data: { id: o.id, status: e.target.value as "new" | "preparing" | "ready" | "completed" | "cancelled" } }), { refresh, setMessage, setSaving, okText: "Status updated." })}
+                    disabled={saving}
+                    className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs"
+                  >
+                    {["new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (!confirm("Delete this order permanently?")) return;
+                      runAction(() => del({ data: { id: o.id } }), { refresh, setMessage, setSaving, okText: "Order deleted." });
+                    }}
+                    disabled={saving}
+                    className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold uppercase inline-flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3" /> Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))}
