@@ -278,8 +278,8 @@ function ImageUploader({ value, onChange, setMessage }: { value: string; onChang
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ kind: "err", text: "Max file size 5MB." });
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage({ kind: "err", text: "Max file size 10MB." });
       return;
     }
     setUploading(true);
