@@ -339,6 +339,93 @@ async function runAction<T>(
   }
 }
 
+/* --------------------------------- Dashboard Tab -------------------------- */
+
+function DashboardTab({ snapshot }: { snapshot: Snapshot }) {
+  const orders = snapshot.orders;
+  const pending = orders.filter((o) => ["new", "preparing", "ready"].includes(o.status));
+  const revenueAll = orders.reduce((s, o) => s + o.total, 0);
+  const revenuePaid = orders
+    .filter((o) => o.status === "completed")
+    .reduce((s, o) => s + o.total, 0);
+  const recent = orders.slice(0, 8);
+
+  const statusColor = (s: string) =>
+    s === "new" ? "bg-brand-gold text-brand-black"
+      : s === "preparing" ? "bg-brand-orange text-white"
+      : s === "ready" ? "bg-blue-500 text-white"
+      : s === "completed" ? "bg-green-600 text-white"
+      : "bg-red-600 text-white";
+
+  return (
+    <div className="space-y-6">
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Total revenue</div>
+          <div className="font-display text-5xl uppercase tracking-tighter">${revenueAll.toFixed(2)}</div>
+          <div className="text-xs text-brand-black/50 mt-1">across {orders.length} recent orders</div>
+        </Card>
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Completed revenue</div>
+          <div className="font-display text-5xl uppercase tracking-tighter text-brand-red">${revenuePaid.toFixed(2)}</div>
+          <div className="text-xs text-brand-black/50 mt-1">completed orders only</div>
+        </Card>
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Pending orders</div>
+          <div className="font-display text-5xl uppercase tracking-tighter">{pending.length}</div>
+          <div className="text-xs text-brand-black/50 mt-1">new / preparing / ready</div>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-3xl uppercase tracking-tighter">Recent Orders</h2>
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">latest {recent.length}</span>
+        </div>
+        {recent.length === 0 ? (
+          <p className="text-brand-black/50 text-sm">No orders yet.</p>
+        ) : (
+          <ul className="divide-y divide-brand-black/10">
+            {recent.map((o) => (
+              <li key={o.id} className="py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold truncate">{o.customerName} · <span className="text-brand-black/50 font-normal">{o.customerPhone}</span></div>
+                  <div className="font-mono text-[10px] uppercase text-brand-black/40">{new Date(o.createdAt).toLocaleString()} · {o.items.length} item{o.items.length === 1 ? "" : "s"}</div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tighter ${statusColor(o.status)}`}>{o.status}</span>
+                  <span className="font-display text-2xl">${o.total.toFixed(2)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Menu at a glance</h3>
+          <ul className="text-sm space-y-1 text-brand-black/70">
+            <li>{snapshot.menuItems.length} total items · {snapshot.menuItems.filter((i) => i.active).length} active</li>
+            <li>{snapshot.categories.length} categories</li>
+            <li>{snapshot.variants.length} variants · {snapshot.addons.length} add-ons</li>
+            <li>{snapshot.offers.filter((o) => o.active).length} active offers</li>
+          </ul>
+        </Card>
+        <Card>
+          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Content</h3>
+          <ul className="text-sm space-y-1 text-brand-black/70">
+            <li>{snapshot.gallery.filter((g) => g.active).length} gallery images live</li>
+            <li>{snapshot.testimonials.filter((t) => t.active).length} testimonials visible</li>
+            <li>WhatsApp: {snapshot.settings.whatsappNumber || "— not set —"}</li>
+            <li>Delivery fee: ${Number(snapshot.settings.deliveryCharges).toFixed(2)}</li>
+          </ul>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 /* --------------------------------- Menu Tab ------------------------------- */
 
 function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapshot: Snapshot; refresh: (s: Snapshot) => void; setMessage: TabProps<never>["setMessage"]; saving: boolean; setSaving: (v: boolean) => void }) {
