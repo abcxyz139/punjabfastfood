@@ -9,6 +9,7 @@ import {
   deleteAddon,
   deleteCategory,
   deleteGalleryImage,
+  deleteOrder,
   deleteMenuItem,
   deleteOffer,
   deleteTestimonial,
@@ -129,7 +130,29 @@ function AdminPage() {
       <section className="max-w-7xl mx-auto px-6 py-10">
         {loading ? (
           <div className="min-h-[50vh] grid place-items-center"><Loader2 className="size-10 animate-spin text-brand-gold" /></div>
-        ) : snapshot && !snapshot.isAdmin ? (
+        ) : !snapshot ? (
+          <div className="max-w-2xl mx-auto py-24 text-center space-y-6">
+            <ShieldCheck className="size-14 text-red-400 mx-auto" />
+            <h1 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-none">Unable to load admin</h1>
+            <p className="text-red-300 font-mono text-sm break-words">{message?.text ?? "The dashboard failed to load. Please refresh and try again."}</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  setMessage(null);
+                  loadDashboard()
+                    .then((data) => setSnapshot(data))
+                    .catch((error) => setMessage({ kind: "err", text: error instanceof Error ? error.message : "Unable to load." }))
+                    .finally(() => setLoading(false));
+                }}
+                className="px-6 py-3 bg-brand-red hover:bg-brand-orange hover:text-brand-black font-bold uppercase tracking-tighter text-xs transition-colors"
+              >
+                Retry
+              </button>
+              <button onClick={handleSignOut} className="px-6 py-3 border border-white/15 hover:border-brand-gold text-xs font-bold uppercase tracking-tighter">Sign out</button>
+            </div>
+          </div>
+        ) : !snapshot.isAdmin ? (
           <div className="max-w-2xl mx-auto py-24 text-center">
             <ShieldCheck className="size-14 text-brand-gold mx-auto mb-8" />
             <h1 className="font-display text-6xl md:text-8xl uppercase tracking-tighter leading-none mb-6">Claim Admin</h1>
@@ -139,7 +162,7 @@ function AdminPage() {
             </button>
             {message && <p className={`mt-6 text-sm ${message.kind === "ok" ? "text-brand-gold" : "text-red-400"}`}>{message.text}</p>}
           </div>
-        ) : snapshot ? (
+        ) : (
           <div className="space-y-8">
             {message && (
               <div className={`border px-4 py-3 text-sm font-mono flex justify-between items-center ${message.kind === "ok" ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-red-500/30 bg-red-500/10 text-red-300"}`}>
@@ -155,15 +178,18 @@ function AdminPage() {
               <StatCard icon={<Flame className="size-5 text-brand-red" />} label="Recent Revenue" value={`$${stats.revenue.toFixed(2)}`} />
             </div>
 
-            <Tabs defaultValue="menu" className="w-full">
+            <Tabs defaultValue="dashboard" className="w-full">
               <TabsList className="bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
-                {["menu", "categories", "hero", "offers", "gallery", "testimonials", "orders", "settings"].map((t) => (
+                {["dashboard", "menu", "categories", "hero", "offers", "gallery", "testimonials", "orders", "settings"].map((t) => (
                   <TabsTrigger key={t} value={t} className="capitalize text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
                     {t}
                   </TabsTrigger>
                 ))}
               </TabsList>
 
+              <TabsContent value="dashboard" className="mt-6">
+                <DashboardTab snapshot={snapshot} />
+              </TabsContent>
               <TabsContent value="menu" className="mt-6">
                 <MenuTab snapshot={snapshot} refresh={refresh} setMessage={setMessage} saving={saving} setSaving={setSaving} />
               </TabsContent>
@@ -190,7 +216,7 @@ function AdminPage() {
               </TabsContent>
             </Tabs>
           </div>
-        ) : null}
+        )}
       </section>
     </main>
   );
@@ -253,8 +279,8 @@ function ImageUploader({ value, onChange, setMessage }: { value: string; onChang
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ kind: "err", text: "Max file size 5MB." });
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage({ kind: "err", text: "Max file size 10MB." });
       return;
     }
     setUploading(true);
@@ -312,6 +338,93 @@ async function runAction<T>(
   } finally {
     ctx.setSaving(false);
   }
+}
+
+/* --------------------------------- Dashboard Tab -------------------------- */
+
+function DashboardTab({ snapshot }: { snapshot: Snapshot }) {
+  const orders = snapshot.orders;
+  const pending = orders.filter((o) => ["new", "preparing", "ready"].includes(o.status));
+  const revenueAll = orders.reduce((s, o) => s + o.total, 0);
+  const revenuePaid = orders
+    .filter((o) => o.status === "completed")
+    .reduce((s, o) => s + o.total, 0);
+  const recent = orders.slice(0, 8);
+
+  const statusColor = (s: string) =>
+    s === "new" ? "bg-brand-gold text-brand-black"
+      : s === "preparing" ? "bg-brand-orange text-white"
+      : s === "ready" ? "bg-blue-500 text-white"
+      : s === "completed" ? "bg-green-600 text-white"
+      : "bg-red-600 text-white";
+
+  return (
+    <div className="space-y-6">
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Total revenue</div>
+          <div className="font-display text-5xl uppercase tracking-tighter">${revenueAll.toFixed(2)}</div>
+          <div className="text-xs text-brand-black/50 mt-1">across {orders.length} recent orders</div>
+        </Card>
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Completed revenue</div>
+          <div className="font-display text-5xl uppercase tracking-tighter text-brand-red">${revenuePaid.toFixed(2)}</div>
+          <div className="text-xs text-brand-black/50 mt-1">completed orders only</div>
+        </Card>
+        <Card>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Pending orders</div>
+          <div className="font-display text-5xl uppercase tracking-tighter">{pending.length}</div>
+          <div className="text-xs text-brand-black/50 mt-1">new / preparing / ready</div>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-3xl uppercase tracking-tighter">Recent Orders</h2>
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">latest {recent.length}</span>
+        </div>
+        {recent.length === 0 ? (
+          <p className="text-brand-black/50 text-sm">No orders yet.</p>
+        ) : (
+          <ul className="divide-y divide-brand-black/10">
+            {recent.map((o) => (
+              <li key={o.id} className="py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold truncate">{o.customerName} · <span className="text-brand-black/50 font-normal">{o.customerPhone}</span></div>
+                  <div className="font-mono text-[10px] uppercase text-brand-black/40">{new Date(o.createdAt).toLocaleString()} · {o.items.length} item{o.items.length === 1 ? "" : "s"}</div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tighter ${statusColor(o.status)}`}>{o.status}</span>
+                  <span className="font-display text-2xl">${o.total.toFixed(2)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Menu at a glance</h3>
+          <ul className="text-sm space-y-1 text-brand-black/70">
+            <li>{snapshot.menuItems.length} total items · {snapshot.menuItems.filter((i) => i.active).length} active</li>
+            <li>{snapshot.categories.length} categories</li>
+            <li>{snapshot.variants.length} variants · {snapshot.addons.length} add-ons</li>
+            <li>{snapshot.offers.filter((o) => o.active).length} active offers</li>
+          </ul>
+        </Card>
+        <Card>
+          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Content</h3>
+          <ul className="text-sm space-y-1 text-brand-black/70">
+            <li>{snapshot.gallery.filter((g) => g.active).length} gallery images live</li>
+            <li>{snapshot.testimonials.filter((t) => t.active).length} testimonials visible</li>
+            <li>WhatsApp: {snapshot.settings.whatsappNumber || "— not set —"}</li>
+            <li>Delivery fee: ${Number(snapshot.settings.deliveryCharges).toFixed(2)}</li>
+          </ul>
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 /* --------------------------------- Menu Tab ------------------------------- */
@@ -679,19 +792,42 @@ function TestimonialsTab({ items, refresh, setMessage, saving, setSaving }: TabP
 
 function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminOrder>) {
   const up = useServerFn(updateOrderStatus);
+  const del = useServerFn(deleteOrder);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const filtered = items.filter((o) => {
+    if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (!query.trim()) return true;
+    const q = query.trim().toLowerCase();
+    return (
+      o.customerName.toLowerCase().includes(q) ||
+      o.customerPhone.toLowerCase().includes(q) ||
+      o.id.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <Card>
-      <h2 className="font-display text-3xl uppercase tracking-tighter mb-4">Orders</h2>
-      {items.length === 0 ? (
-        <p className="text-brand-black/50 text-sm">No orders yet.</p>
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
+        <h2 className="font-display text-3xl uppercase tracking-tighter">Orders</h2>
+        <div className="flex gap-2 items-center">
+          <TextInput placeholder="Search name, phone, id…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs">
+            {["all", "new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-brand-black/50 text-sm">No orders match.</p>
       ) : (
         <div className="space-y-3">
-          {items.map((o) => (
+          {filtered.map((o) => (
             <div key={o.id} className="border border-brand-black/10 p-4">
               <div className="grid md:grid-cols-[1fr_auto] gap-3">
                 <div>
                   <div className="font-bold">{o.customerName} · {o.customerPhone}</div>
-                  <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()}</div>
+                  <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()} · #{o.id.slice(0, 8)}</div>
                   <div className="mt-2 font-display text-3xl text-brand-red">${o.total.toFixed(2)}</div>
                   {o.items.length > 0 && (
                     <ul className="mt-2 text-xs text-brand-black/70 space-y-0.5">
@@ -702,14 +838,26 @@ function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<A
                   )}
                   {o.notes && <div className="mt-2 text-xs italic text-brand-black/50">Note: {o.notes}</div>}
                 </div>
-                <select
-                  value={o.status}
-                  onChange={(e) => runAction(() => up({ data: { id: o.id, status: e.target.value as "new" | "preparing" | "ready" | "completed" | "cancelled" } }), { refresh, setMessage, setSaving, okText: "Status updated." })}
-                  disabled={saving}
-                  className="self-start border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs"
-                >
-                  {["new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <div className="flex flex-col gap-2 items-end self-start">
+                  <select
+                    value={o.status}
+                    onChange={(e) => runAction(() => up({ data: { id: o.id, status: e.target.value as "new" | "preparing" | "ready" | "completed" | "cancelled" } }), { refresh, setMessage, setSaving, okText: "Status updated." })}
+                    disabled={saving}
+                    className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs"
+                  >
+                    {["new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (!confirm("Delete this order permanently?")) return;
+                      runAction(() => del({ data: { id: o.id } }), { refresh, setMessage, setSaving, okText: "Order deleted." });
+                    }}
+                    disabled={saving}
+                    className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold uppercase inline-flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3" /> Delete
+                  </button>
+                </div>
               </div>
             </div>
           ))}
