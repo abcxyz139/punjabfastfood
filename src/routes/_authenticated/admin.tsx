@@ -9,6 +9,7 @@ import {
   deleteAddon,
   deleteCategory,
   deleteGalleryImage,
+  deleteOrder,
   deleteMenuItem,
   deleteOffer,
   deleteTestimonial,
