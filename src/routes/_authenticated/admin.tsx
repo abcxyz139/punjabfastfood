@@ -129,7 +129,29 @@ function AdminPage() {
       <section className="max-w-7xl mx-auto px-6 py-10">
         {loading ? (
           <div className="min-h-[50vh] grid place-items-center"><Loader2 className="size-10 animate-spin text-brand-gold" /></div>
-        ) : snapshot && !snapshot.isAdmin ? (
+        ) : !snapshot ? (
+          <div className="max-w-2xl mx-auto py-24 text-center space-y-6">
+            <ShieldCheck className="size-14 text-red-400 mx-auto" />
+            <h1 className="font-display text-5xl md:text-7xl uppercase tracking-tighter leading-none">Unable to load admin</h1>
+            <p className="text-red-300 font-mono text-sm break-words">{message?.text ?? "The dashboard failed to load. Please refresh and try again."}</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  setMessage(null);
+                  loadDashboard()
+                    .then((data) => setSnapshot(data))
+                    .catch((error) => setMessage({ kind: "err", text: error instanceof Error ? error.message : "Unable to load." }))
+                    .finally(() => setLoading(false));
+                }}
+                className="px-6 py-3 bg-brand-red hover:bg-brand-orange hover:text-brand-black font-bold uppercase tracking-tighter text-xs transition-colors"
+              >
+                Retry
+              </button>
+              <button onClick={handleSignOut} className="px-6 py-3 border border-white/15 hover:border-brand-gold text-xs font-bold uppercase tracking-tighter">Sign out</button>
+            </div>
+          </div>
+        ) : !snapshot.isAdmin ? (
           <div className="max-w-2xl mx-auto py-24 text-center">
             <ShieldCheck className="size-14 text-brand-gold mx-auto mb-8" />
             <h1 className="font-display text-6xl md:text-8xl uppercase tracking-tighter leading-none mb-6">Claim Admin</h1>
@@ -139,7 +161,7 @@ function AdminPage() {
             </button>
             {message && <p className={`mt-6 text-sm ${message.kind === "ok" ? "text-brand-gold" : "text-red-400"}`}>{message.text}</p>}
           </div>
-        ) : snapshot ? (
+        ) : (
           <div className="space-y-8">
             {message && (
               <div className={`border px-4 py-3 text-sm font-mono flex justify-between items-center ${message.kind === "ok" ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-red-500/30 bg-red-500/10 text-red-300"}`}>
@@ -155,15 +177,18 @@ function AdminPage() {
               <StatCard icon={<Flame className="size-5 text-brand-red" />} label="Recent Revenue" value={`$${stats.revenue.toFixed(2)}`} />
             </div>
 
-            <Tabs defaultValue="menu" className="w-full">
+            <Tabs defaultValue="dashboard" className="w-full">
               <TabsList className="bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
-                {["menu", "categories", "hero", "offers", "gallery", "testimonials", "orders", "settings"].map((t) => (
+                {["dashboard", "menu", "categories", "hero", "offers", "gallery", "testimonials", "orders", "settings"].map((t) => (
                   <TabsTrigger key={t} value={t} className="capitalize text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
                     {t}
                   </TabsTrigger>
                 ))}
               </TabsList>
 
+              <TabsContent value="dashboard" className="mt-6">
+                <DashboardTab snapshot={snapshot} />
+              </TabsContent>
               <TabsContent value="menu" className="mt-6">
                 <MenuTab snapshot={snapshot} refresh={refresh} setMessage={setMessage} saving={saving} setSaving={setSaving} />
               </TabsContent>
@@ -190,7 +215,7 @@ function AdminPage() {
               </TabsContent>
             </Tabs>
           </div>
-        ) : null}
+        )}
       </section>
     </main>
   );
