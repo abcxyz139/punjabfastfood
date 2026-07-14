@@ -1036,7 +1036,7 @@ function Contact() {
           </div>
 
           <a
-            href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to make an enquiry.`)}
+            href={buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}, I'd like to make an enquiry.`)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-6 py-4 bg-green-600 text-white font-bold uppercase tracking-tighter text-sm hover:bg-green-700 transition-colors"
