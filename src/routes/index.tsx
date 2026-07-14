@@ -1545,10 +1545,12 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                 {formError && <div className="text-xs text-brand-red font-mono">{formError}</div>}
                 <button
                   onClick={handleOrder}
-                  className="w-full mt-2 py-4 bg-green-600 hover:bg-green-500 text-white font-bold uppercase tracking-tighter text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+                  disabled={submitting}
+                  className="w-full mt-2 py-4 bg-green-600 hover:bg-green-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold uppercase tracking-tighter text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
                 >
-                  <MessageCircle className="size-4" /> Order on WhatsApp
+                  {submitting ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />} {submitting ? "Placing order…" : "Order on WhatsApp"}
                 </button>
+
                 <p className="text-[10px] font-mono uppercase tracking-widest text-brand-black/40 text-center">Opens WhatsApp with your order</p>
               </div>
             )}
