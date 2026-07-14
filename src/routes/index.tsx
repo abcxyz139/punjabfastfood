@@ -5,14 +5,42 @@ import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2 } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
-import { getPublicMenu } from "@/lib/menu.functions";
+import { getPublicMenu, getPublicSettings } from "@/lib/menu.functions";
+import { createCustomerOrder } from "@/lib/orders.functions";
+import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
 
-// ---------- Restaurant constants (WhatsApp order flow) ----------
-const RESTAURANT_NAME = "Punjab Fast Food";
-const WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
+// ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
+const DEFAULT_RESTAURANT_NAME = "Punjab Fast Food";
+const DEFAULT_WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
+const DEFAULT_DELIVERY_CHARGES = 2.5;
+
+function buildWaUrl(number: string, text?: string) {
+  const link = `https://wa.me/${number}`;
+  return text ? `${link}?text=${encodeURIComponent(text)}` : link;
+}
+
+function useSettings() {
+  const fetchSettings = useServerFn(getPublicSettings);
+  const { data } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: () => fetchSettings(),
+    staleTime: 60_000,
+  });
+  return {
+    restaurantName: data?.restaurantName ?? DEFAULT_RESTAURANT_NAME,
+    whatsappNumber: data?.whatsappNumber ?? DEFAULT_WHATSAPP_NUMBER,
+    deliveryCharges: data?.deliveryCharges ?? DEFAULT_DELIVERY_CHARGES,
+    minOrder: data?.minOrder ?? 0,
+  };
+}
+
+// Back-compat helpers used across static call sites — these use defaults; components
+// that need live settings use useSettings() + buildWaUrl() directly.
+const RESTAURANT_NAME = DEFAULT_RESTAURANT_NAME;
+const WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
-const DELIVERY_CHARGES = 2.5;
+const DELIVERY_CHARGES = DEFAULT_DELIVERY_CHARGES;
 
 function waUrl(text?: string) {
   return text ? `${WHATSAPP_LINK}?text=${encodeURIComponent(text)}` : WHATSAPP_LINK;
@@ -22,9 +50,11 @@ function buildOrderMessage(
   items: CartEntry[],
   customer: { name: string; phone: string; address: string; notes: string },
   totals: { subtotal: number; delivery: number; total: number },
+  meta: { restaurantName: string; orderId?: string | null },
 ) {
   const lines: string[] = [];
-  lines.push(`*New Order — ${RESTAURANT_NAME}*`, "");
+  lines.push(`*New Order — ${meta.restaurantName}*`, "");
+  if (meta.orderId) lines.push(`*Order ID:* ${meta.orderId}`);
   lines.push(`*Customer:* ${customer.name}`);
   lines.push(`*Phone:* ${customer.phone}`);
   if (customer.address) lines.push(`*Address:* ${customer.address}`);
@@ -40,6 +70,7 @@ function buildOrderMessage(
   lines.push("", "Please confirm my order. Thank you!");
   return lines.join("\n");
 }
+
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
@@ -963,8 +994,10 @@ function Gallery() {
 }
 
 function Contact() {
+  const settings = useSettings();
   return (
     <section id="contact" className="py-24 md:py-32 px-6 bg-white">
+
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -1003,7 +1036,7 @@ function Contact() {
           </div>
 
           <a
-            href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to make an enquiry.`)}
+            href={buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}, I'd like to make an enquiry.`)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-6 py-4 bg-green-600 text-white font-bold uppercase tracking-tighter text-sm hover:bg-green-700 transition-colors"
@@ -1040,6 +1073,7 @@ function Contact() {
 }
 
 function Footer() {
+  const settings = useSettings();
   return (
     <footer className="bg-brand-black text-white py-20 px-6">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12">
@@ -1054,8 +1088,9 @@ function Footer() {
             {[
               { Icon: Instagram, href: "#" },
               { Icon: Facebook, href: "#" },
-              { Icon: MessageCircle, href: waUrl(`Hi ${RESTAURANT_NAME}!`) },
+              { Icon: MessageCircle, href: buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}!`) },
             ].map(({ Icon, href }, i) => (
+
               <a key={i} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
                 <Icon className="size-4" />
               </a>
@@ -1317,13 +1352,14 @@ function CartPanel({ title, empty, items, onRemove, accent }: { title: string; e
 function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
   const [mounted, setMounted] = useState(false);
   const { cart } = useCartState();
+  const settings = useSettings();
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   const count = cart.reduce((s, c) => s + c.quantity, 0);
   return (
     <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
       <a
-        href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to place an order.`)}
+        href={buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}, I'd like to place an order.`)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
@@ -1331,6 +1367,7 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
       >
         <MessageCircle className="size-6" />
       </a>
+
       <button
         onClick={onOpenCart}
         aria-label="Open cart"
@@ -1351,11 +1388,14 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
 
 function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { cart } = useCartState();
+  const settings = useSettings();
+  const submitOrder = useServerFn(createCustomerOrder);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -1363,23 +1403,67 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Ensure an auth session exists (anonymous is fine) so createCustomerOrder can persist.
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          await supabase.auth.signInAnonymously();
+        }
+      } catch (err) {
+        console.warn("[cart] anonymous sign-in failed", err);
+      }
+    })();
+  }, [open]);
+
   const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
-  const delivery = cart.length > 0 ? DELIVERY_CHARGES : 0;
+  const delivery = cart.length > 0 ? settings.deliveryCharges : 0;
   const total = subtotal + delivery;
 
-  const handleOrder = () => {
+  const handleOrder = async () => {
     setFormError(null);
     if (cart.length === 0) return setFormError("Your cart is empty.");
     if (!name.trim()) return setFormError("Please enter your name.");
     if (!phone.trim()) return setFormError("Please enter your phone number.");
     if (!address.trim()) return setFormError("Please enter your delivery address.");
+
+    setSubmitting(true);
+    let orderId: string | null = null;
+
+    // Persist order to Supabase before opening WhatsApp. Never block the WA flow on failure.
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) await supabase.auth.signInAnonymously();
+      const result = await submitOrder({
+        data: {
+          customerName: name.trim(),
+          customerPhone: phone.trim(),
+          notes: [address.trim() ? `Address: ${address.trim()}` : "", notes.trim()].filter(Boolean).join(" | ") || null,
+          items: cart.map((c) => ({
+            menuItemId: c.menuItemId,
+            variantId: c.variantId ?? undefined,
+            addonIds: c.addonIds,
+            quantity: c.quantity,
+          })),
+        },
+      });
+      orderId = result?.id ?? null;
+    } catch (err) {
+      console.warn("[cart] order persistence failed, continuing to WhatsApp", err);
+    }
+
     const msg = buildOrderMessage(
       cart,
       { name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() },
       { subtotal, delivery, total },
+      { restaurantName: settings.restaurantName, orderId },
     );
-    window.open(waUrl(msg), "_blank", "noopener,noreferrer");
+    window.open(buildWaUrl(settings.whatsappNumber, msg), "_blank", "noopener,noreferrer");
+    setSubmitting(false);
   };
+
 
   return (
     <AnimatePresence>
@@ -1467,10 +1551,12 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                 {formError && <div className="text-xs text-brand-red font-mono">{formError}</div>}
                 <button
                   onClick={handleOrder}
-                  className="w-full mt-2 py-4 bg-green-600 hover:bg-green-500 text-white font-bold uppercase tracking-tighter text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+                  disabled={submitting}
+                  className="w-full mt-2 py-4 bg-green-600 hover:bg-green-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold uppercase tracking-tighter text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
                 >
-                  <MessageCircle className="size-4" /> Order on WhatsApp
+                  {submitting ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />} {submitting ? "Placing order…" : "Order on WhatsApp"}
                 </button>
+
                 <p className="text-[10px] font-mono uppercase tracking-widest text-brand-black/40 text-center">Opens WhatsApp with your order</p>
               </div>
             )}
