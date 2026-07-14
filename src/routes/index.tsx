@@ -1348,13 +1348,14 @@ function CartPanel({ title, empty, items, onRemove, accent }: { title: string; e
 function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
   const [mounted, setMounted] = useState(false);
   const { cart } = useCartState();
+  const settings = useSettings();
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   const count = cart.reduce((s, c) => s + c.quantity, 0);
   return (
     <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
       <a
-        href={waUrl(`Hi ${RESTAURANT_NAME}, I'd like to place an order.`)}
+        href={buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}, I'd like to place an order.`)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
@@ -1362,6 +1363,7 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
       >
         <MessageCircle className="size-6" />
       </a>
+
       <button
         onClick={onOpenCart}
         aria-label="Open cart"
