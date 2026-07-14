@@ -1382,11 +1382,14 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
 
 function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { cart } = useCartState();
+  const settings = useSettings();
+  const submitOrder = useServerFn(createCustomerOrder);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -1394,23 +1397,67 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Ensure an auth session exists (anonymous is fine) so createCustomerOrder can persist.
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+          await supabase.auth.signInAnonymously();
+        }
+      } catch (err) {
+        console.warn("[cart] anonymous sign-in failed", err);
+      }
+    })();
+  }, [open]);
+
   const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
-  const delivery = cart.length > 0 ? DELIVERY_CHARGES : 0;
+  const delivery = cart.length > 0 ? settings.deliveryCharges : 0;
   const total = subtotal + delivery;
 
-  const handleOrder = () => {
+  const handleOrder = async () => {
     setFormError(null);
     if (cart.length === 0) return setFormError("Your cart is empty.");
     if (!name.trim()) return setFormError("Please enter your name.");
     if (!phone.trim()) return setFormError("Please enter your phone number.");
     if (!address.trim()) return setFormError("Please enter your delivery address.");
+
+    setSubmitting(true);
+    let orderId: string | null = null;
+
+    // Persist order to Supabase before opening WhatsApp. Never block the WA flow on failure.
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) await supabase.auth.signInAnonymously();
+      const result = await submitOrder({
+        data: {
+          customerName: name.trim(),
+          customerPhone: phone.trim(),
+          notes: [address.trim() ? `Address: ${address.trim()}` : "", notes.trim()].filter(Boolean).join(" | ") || null,
+          items: cart.map((c) => ({
+            menuItemId: c.menuItemId,
+            variantId: c.variantId ?? undefined,
+            addonIds: c.addonIds,
+            quantity: c.quantity,
+          })),
+        },
+      });
+      orderId = result?.id ?? null;
+    } catch (err) {
+      console.warn("[cart] order persistence failed, continuing to WhatsApp", err);
+    }
+
     const msg = buildOrderMessage(
       cart,
       { name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() },
       { subtotal, delivery, total },
+      { restaurantName: settings.restaurantName, orderId },
     );
-    window.open(waUrl(msg), "_blank", "noopener,noreferrer");
+    window.open(buildWaUrl(settings.whatsappNumber, msg), "_blank", "noopener,noreferrer");
+    setSubmitting(false);
   };
+
 
   return (
     <AnimatePresence>
