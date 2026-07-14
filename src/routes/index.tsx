@@ -5,14 +5,42 @@ import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2 } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
-import { getPublicMenu } from "@/lib/menu.functions";
+import { getPublicMenu, getPublicSettings } from "@/lib/menu.functions";
+import { createCustomerOrder } from "@/lib/orders.functions";
+import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
 
-// ---------- Restaurant constants (WhatsApp order flow) ----------
-const RESTAURANT_NAME = "Punjab Fast Food";
-const WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
+// ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
+const DEFAULT_RESTAURANT_NAME = "Punjab Fast Food";
+const DEFAULT_WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
+const DEFAULT_DELIVERY_CHARGES = 2.5;
+
+function buildWaUrl(number: string, text?: string) {
+  const link = `https://wa.me/${number}`;
+  return text ? `${link}?text=${encodeURIComponent(text)}` : link;
+}
+
+function useSettings() {
+  const fetchSettings = useServerFn(getPublicSettings);
+  const { data } = useQuery({
+    queryKey: ["public-settings"],
+    queryFn: () => fetchSettings(),
+    staleTime: 60_000,
+  });
+  return {
+    restaurantName: data?.restaurantName ?? DEFAULT_RESTAURANT_NAME,
+    whatsappNumber: data?.whatsappNumber ?? DEFAULT_WHATSAPP_NUMBER,
+    deliveryCharges: data?.deliveryCharges ?? DEFAULT_DELIVERY_CHARGES,
+    minOrder: data?.minOrder ?? 0,
+  };
+}
+
+// Back-compat helpers used across static call sites — these use defaults; components
+// that need live settings use useSettings() + buildWaUrl() directly.
+const RESTAURANT_NAME = DEFAULT_RESTAURANT_NAME;
+const WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
-const DELIVERY_CHARGES = 2.5;
+const DELIVERY_CHARGES = DEFAULT_DELIVERY_CHARGES;
 
 function waUrl(text?: string) {
   return text ? `${WHATSAPP_LINK}?text=${encodeURIComponent(text)}` : WHATSAPP_LINK;
@@ -22,9 +50,11 @@ function buildOrderMessage(
   items: CartEntry[],
   customer: { name: string; phone: string; address: string; notes: string },
   totals: { subtotal: number; delivery: number; total: number },
+  meta: { restaurantName: string; orderId?: string | null },
 ) {
   const lines: string[] = [];
-  lines.push(`*New Order — ${RESTAURANT_NAME}*`, "");
+  lines.push(`*New Order — ${meta.restaurantName}*`, "");
+  if (meta.orderId) lines.push(`*Order ID:* ${meta.orderId}`);
   lines.push(`*Customer:* ${customer.name}`);
   lines.push(`*Phone:* ${customer.phone}`);
   if (customer.address) lines.push(`*Address:* ${customer.address}`);
@@ -40,6 +70,7 @@ function buildOrderMessage(
   lines.push("", "Please confirm my order. Thank you!");
   return lines.join("\n");
 }
+
 
 import heroSpice from "@/assets/hero-spice.jpg";
 import imgBurger from "@/assets/menu-burger.jpg";
