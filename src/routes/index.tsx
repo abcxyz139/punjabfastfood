@@ -994,7 +994,8 @@ function Gallery() {
 }
 
 function Contact() {
-  return (
+  const settings = useSettings();
+
     <section id="contact" className="py-24 md:py-32 px-6 bg-white">
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16">
         <motion.div
