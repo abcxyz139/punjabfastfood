@@ -1073,6 +1073,7 @@ function Contact() {
 }
 
 function Footer() {
+  const settings = useSettings();
   return (
     <footer className="bg-brand-black text-white py-20 px-6">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-12">
@@ -1087,8 +1088,9 @@ function Footer() {
             {[
               { Icon: Instagram, href: "#" },
               { Icon: Facebook, href: "#" },
-              { Icon: MessageCircle, href: waUrl(`Hi ${RESTAURANT_NAME}!`) },
+              { Icon: MessageCircle, href: buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}!`) },
             ].map(({ Icon, href }, i) => (
+
               <a key={i} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="size-10 rounded-full border border-white/20 grid place-items-center hover:bg-brand-red hover:border-brand-red transition-colors">
                 <Icon className="size-4" />
               </a>
