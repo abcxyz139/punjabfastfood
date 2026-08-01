@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CustomerOrderInputSchema } from "./admin.schemas";
 import { isAvailableNow } from "./menu.types";
+import { evaluateLoyalty } from "./loyalty.server";
 
 
 function round2(n: number) {
@@ -111,8 +112,44 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     }
 
     const subtotal = round2(lineItems.reduce((s, l) => s + l.lineTotal, 0));
-    const discount = 0;
-    const total = round2(subtotal - discount);
+
+    // ---- Loyalty reward redemption (server-side only; client prices are ignored) ----
+    let discount = 0;
+    let redeemedRewardId: string | null = null;
+    if (data.loyaltyRewardId) {
+      const { data: reward, error: rewardError } = await context.supabase
+        .from("loyalty_rewards")
+        .select("id,status,reward_type,reward_value,expires_at,program_id")
+        .eq("id", data.loyaltyRewardId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (rewardError) throw new Error(rewardError.message);
+      if (!reward || reward.status !== "unlocked") throw new Error("That reward is no longer available.");
+      if (reward.expires_at && new Date(reward.expires_at).getTime() < Date.now()) {
+        throw new Error("That reward has expired.");
+      }
+
+      const value = Number(reward.reward_value);
+      if (reward.reward_type === "percent") {
+        discount = round2((subtotal * Math.min(100, value)) / 100);
+      } else if (reward.reward_type === "fixed") {
+        discount = round2(Math.min(value, subtotal));
+      } else if (reward.reward_type === "free_product") {
+        const { data: program } = await context.supabase
+          .from("loyalty_programs")
+          .select("reward_menu_item_id")
+          .eq("id", reward.program_id)
+          .maybeSingle();
+        const freeId = program?.reward_menu_item_id ?? null;
+        const match = freeId
+          ? lineItems.find((l) => l.menuItemId === freeId)
+          : [...lineItems].sort((a, b) => a.unitPrice - b.unitPrice)[0];
+        discount = match ? round2(Math.min(match.unitPrice, subtotal)) : 0;
+      }
+      redeemedRewardId = reward.id;
+    }
+
+    const total = round2(Math.max(0, subtotal - discount));
 
     const { data: order, error } = await context.supabase
       .from("orders")
@@ -130,10 +167,35 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
       .single();
 
     if (error) throw new Error(error.message);
+
+    // Loyalty bookkeeping runs with elevated rights so customers can never edit progress.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (redeemedRewardId) {
+      await supabaseAdmin
+        .from("loyalty_rewards")
+        .update({ status: "redeemed", redeemed_order_id: order.id })
+        .eq("id", redeemedRewardId)
+        .eq("user_id", context.userId);
+    }
+
+    let unlocked: unknown[] = [];
+    try {
+      unlocked = await evaluateLoyalty(
+        context.supabase,
+        supabaseAdmin as never,
+        context.userId,
+        data.customerPhone,
+      );
+    } catch {
+      unlocked = [];
+    }
+
     return {
       id: order.id,
       total: Number(order.total),
+      discount,
       status: order.status,
       createdAt: order.created_at,
+      unlockedRewards: unlocked.length,
     };
   });

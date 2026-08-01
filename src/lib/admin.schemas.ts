@@ -55,6 +55,7 @@ export const CustomerOrderInputSchema = z.object({
     .min(1)
     .max(30),
   notes: z.string().trim().max(500).nullable().optional(),
+  loyaltyRewardId: z.string().uuid().nullable().optional(),
 });
 
 export const CategoryInputSchema = z.object({
@@ -147,7 +148,37 @@ export const BusinessSettingsInputSchema = z.object({
     .default({}),
 });
 
+export const LoyaltyProgramInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(400).default(""),
+  earnType: z.enum(["product", "category", "order", "amount"]).default("product"),
+  targetMenuItemId: z.string().uuid().nullable().optional(),
+  targetCategoryId: z.string().uuid().nullable().optional(),
+  threshold: z.number().min(0.01).max(1_000_000),
+  rewardType: z
+    .enum(["percent", "fixed", "free_product", "free_delivery", "points"])
+    .default("free_product"),
+  rewardValue: z.number().min(0).max(1_000_000).default(0),
+  rewardMenuItemId: z.string().uuid().nullable().optional(),
+  rewardLabel: z.string().trim().max(120).default(""),
+  active: z.boolean().default(true),
+  priority: z.number().int().min(0).max(9999).default(100),
+  usageLimitPerCustomer: z.number().int().min(1).max(999).nullable().optional(),
+  expiryMode: z.enum(["never", "days", "date"]).default("never"),
+  expiryDays: z.number().int().min(1).max(3650).nullable().optional(),
+  expiresAt: z.string().nullable().optional(),
+  stackMode: z
+    .enum(["stack_all", "offers_only", "promotions_only", "exclusive"])
+    .default("stack_all"),
+  campaign: z.string().trim().max(80).default(""),
+  applicableCustomerIds: z.array(z.string().uuid()).max(500).default([]),
+});
+
+export type LoyaltyProgramInput = z.infer<typeof LoyaltyProgramInputSchema>;
+
 export const DeleteByIdSchema = z.object({ id: z.string().uuid() });
+
 
 export const UploadMediaSchema = z.object({
   fileName: z.string().min(1).max(200),

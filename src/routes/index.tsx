@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2, Search } from "lucide-react";
@@ -10,6 +10,8 @@ import { createCustomerOrder } from "@/lib/orders.functions";
 import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
 import { BADGE_OPTIONS, isAvailableNow, availabilityLabel } from "@/lib/menu.types";
+import { LoyaltySection, CartLoyalty, FavoriteButton } from "@/components/loyalty";
+import type { CustomerOrderSummary } from "@/lib/loyalty.types";
 
 
 // ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
@@ -211,6 +213,37 @@ function useCartState() {
 
 function Home() {
   const [cartOpen, setCartOpen] = useState(false);
+
+  const addPastItem = useCallback((i: CustomerOrderSummary["items"][number]) => {
+    addEntry({
+      menuItemId: i.menuItemId,
+      name: i.name,
+      variantId: i.variantId ?? null,
+      variantName: i.variantName ?? null,
+      addonIds: i.addons.map((a) => a.id),
+      addonNames: i.addons.map((a) => a.name),
+      unitPrice: i.unitPrice,
+      quantity: i.quantity,
+      notes: i.notes ?? null,
+    });
+  }, []);
+
+  const handleReorder = useCallback(
+    (order: CustomerOrderSummary) => {
+      order.items.forEach(addPastItem);
+      setCartOpen(true);
+    },
+    [addPastItem],
+  );
+
+  const handleReorderItem = useCallback(
+    (item: CustomerOrderSummary["items"][number]) => {
+      addPastItem(item);
+      setCartOpen(true);
+    },
+    [addPastItem],
+  );
+
   return (
     <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
       <LoadingScreen />
@@ -219,6 +252,7 @@ function Home() {
       <Marquee />
       <Menu />
       <Offers />
+      <LoyaltySection onReorder={handleReorder} onReorderItem={handleReorderItem} />
       <AiRecommendations />
       <Story />
       <Testimonials />
@@ -663,6 +697,9 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
       whileHover={servable ? { y: -6 } : undefined}
       className={`group bg-white p-6 transition-colors duration-500 relative ${servable ? "hover:bg-brand-gold" : ""}`}
     >
+      <div className="absolute top-4 left-4 z-10">
+        <FavoriteButton menuItemId={item.id} name={item.name} />
+      </div>
       {(item.badges.length > 0 || item.tag) && (
         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
           {item.tag && (
@@ -1880,6 +1917,9 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [rewardId, setRewardId] = useState<string | null>(null);
+  const [rewardDiscount, setRewardDiscount] = useState(0);
+  const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -1906,7 +1946,8 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
   const delivery = cart.length > 0 ? settings.deliveryCharges : 0;
-  const total = subtotal + delivery;
+  // Reward discount shown here is indicative only — the server recalculates it authoritatively.
+  const total = Math.max(0, subtotal - rewardDiscount) + delivery;
 
   const handleOrder = async () => {
     setFormError(null);
@@ -1917,6 +1958,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
     setSubmitting(true);
     let orderId: string | null = null;
+    let serverDiscount = 0;
 
     // Persist order to Supabase before opening WhatsApp. Never block the WA flow on failure.
     try {
@@ -1934,9 +1976,14 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
             quantity: c.quantity,
             notes: c.notes ?? null,
           })),
+          loyaltyRewardId: rewardId,
         },
       });
       orderId = result?.id ?? null;
+      serverDiscount = result?.discount ?? 0;
+      await queryClient.invalidateQueries({ queryKey: ["my-loyalty"] });
+      setRewardId(null);
+      setRewardDiscount(0);
     } catch (err) {
       console.warn("[cart] order persistence failed, continuing to WhatsApp", err);
     }
@@ -1944,7 +1991,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     const msg = buildOrderMessage(
       cart,
       { name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() },
-      { subtotal, delivery, total },
+      { subtotal, delivery, total: Math.max(0, subtotal - serverDiscount) + delivery },
       { restaurantName: settings.restaurantName, orderId },
     );
     window.open(buildWaUrl(settings.whatsappNumber, msg), "_blank", "noopener,noreferrer");
@@ -2019,6 +2066,15 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </div>
                   ))}
 
+                  <CartLoyalty
+                    rewardId={rewardId}
+                    subtotal={subtotal}
+                    onSelectReward={(id, est) => {
+                      setRewardId(id);
+                      setRewardDiscount(est);
+                    }}
+                  />
+
                   <div className="pt-4 mt-4 border-t border-brand-black/10 space-y-3">
                     <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/50">Delivery Details</div>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
@@ -2033,6 +2089,9 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
             {cart.length > 0 && (
               <div className="border-t border-brand-black/10 px-6 py-4 space-y-2 bg-brand-cream">
                 <div className="flex justify-between text-sm"><span className="text-brand-black/60">Subtotal</span><span className="font-mono font-bold">{formatPrice(subtotal)}</span></div>
+                {rewardId && (
+                  <div className="flex justify-between text-sm text-brand-red"><span>Loyalty reward</span><span className="font-mono font-bold">-{formatPrice(rewardDiscount)}</span></div>
+                )}
                 <div className="flex justify-between text-sm"><span className="text-brand-black/60">Delivery</span><span className="font-mono font-bold">{formatPrice(delivery)}</span></div>
                 <div className="flex justify-between items-baseline pt-2 border-t border-brand-black/10">
                   <span className="font-display text-xl uppercase tracking-tighter">Total</span>
