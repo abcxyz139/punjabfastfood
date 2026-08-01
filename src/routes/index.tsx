@@ -615,7 +615,7 @@ function Menu() {
       {!isLoading && !error && filtered.length > 0 && (
         <motion.div
           layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
         >
           <AnimatePresence mode="popLayout">
             {filtered.map((item, i) => (
