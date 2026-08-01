@@ -490,10 +490,12 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
   const hasVariants = item.variants.length > 0;
   const hasAddons = item.addons.length > 0;
   const needsOptions = hasVariants || hasAddons;
+  const ctaLabel = item.productType === "combo" ? "Order Deal" : needsOptions ? "Select Options" : "Add to Cart";
 
   const priceLabel = hasVariants
     ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
     : formatPrice(item.price);
+
 
   const handleQuickAdd = () => {
     addEntry({
@@ -544,23 +546,26 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
           onClick={onOpenOptions}
           className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
         >
-          <Settings2 className="size-3" /> Select Options
+          <Settings2 className="size-3" /> {ctaLabel}
         </button>
       ) : (
         <button
           onClick={handleQuickAdd}
           className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
         >
-          <Plus className="size-3" /> Add to Cart
+          <Plus className="size-3" /> {ctaLabel}
         </button>
       )}
     </motion.div>
+
   );
 }
 
 function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => void }) {
   const hasVariants = item.variants.length > 0;
-  const [variantId, setVariantId] = useState<string | null>(hasVariants ? item.variants[0].id : null);
+  const [variantId, setVariantId] = useState<string | null>(
+    hasVariants && item.variantRequired ? item.variants[0].id : null,
+  );
   const [addonIds, setAddonIds] = useState<Set<string>>(new Set());
   const [qty, setQty] = useState(1);
 
@@ -573,7 +578,7 @@ function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => 
   }, [onClose]);
 
   const variant: MenuVariant | null = hasVariants
-    ? item.variants.find((v) => v.id === variantId) ?? item.variants[0]
+    ? item.variants.find((v) => v.id === variantId) ?? (item.variantRequired ? item.variants[0] : null)
     : null;
   const selectedAddons: MenuAddon[] = item.addons.filter((a) => addonIds.has(a.id));
 
@@ -582,14 +587,19 @@ function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => 
   const unitPrice = basePrice + addonsPrice;
   const total = unitPrice * qty;
 
+  const maxAddons = item.maxAddons;
+  const addonLimitReached = maxAddons !== null && selectedAddons.length >= maxAddons;
+  const missingVariant = hasVariants && item.variantRequired && !variant;
+
   const toggleAddon = (id: string) => {
     setAddonIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
-      else next.add(id);
+      else if (maxAddons === null || next.size < maxAddons) next.add(id);
       return next;
     });
   };
+
 
   const handleAdd = () => {
     const chosenAddons = selectedAddons;
@@ -642,7 +652,20 @@ function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => 
 
           {hasVariants && (
             <div className="mb-6">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] mb-3">Choose Size</div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em]">
+                  {item.variantLabel}
+                  {!item.variantRequired && <span className="text-brand-black/40"> (optional)</span>}
+                </div>
+                {!item.variantRequired && variant && (
+                  <button
+                    onClick={() => setVariantId(null)}
+                    className="font-mono text-[10px] uppercase tracking-widest text-brand-red hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {item.variants.map((v) => {
                   const active = variant?.id === v.id;
@@ -669,20 +692,30 @@ function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => 
 
           {item.addons.length > 0 && (
             <div className="mb-6">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] mb-3">Add-ons (optional)</div>
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] mb-3">
+                {item.addonLabel} <span className="text-brand-black/40">
+                  {maxAddons !== null ? `(max ${maxAddons})` : "(optional)"}
+                </span>
+              </div>
+
               <div className="space-y-2">
                 {item.addons.map((a) => {
                   const active = addonIds.has(a.id);
+                  const blocked = !active && addonLimitReached;
                   return (
                     <button
                       key={a.id}
                       onClick={() => toggleAddon(a.id)}
+                      disabled={blocked}
                       className={`w-full flex items-center justify-between p-3 border transition-colors text-left ${
                         active
                           ? "border-brand-black bg-brand-black text-white"
-                          : "border-brand-black/10 hover:border-brand-black"
+                          : blocked
+                            ? "border-brand-black/10 opacity-40 cursor-not-allowed"
+                            : "border-brand-black/10 hover:border-brand-black"
                       }`}
                     >
+
                       <div className="flex items-center gap-3">
                         <span className={`size-4 grid place-items-center border ${active ? "border-brand-gold bg-brand-gold text-brand-black" : "border-brand-black/30"}`}>
                           {active && <Check className="size-3" />}
@@ -722,11 +755,15 @@ function OptionsModal({ item, onClose }: { item: PublicMenuItem; onClose: () => 
 
           <button
             onClick={handleAdd}
-            className="w-full py-4 bg-brand-red text-white font-bold uppercase tracking-tighter text-sm hover:bg-brand-black transition-colors flex items-center justify-between px-6"
+            disabled={missingVariant}
+            className="w-full py-4 bg-brand-red text-white font-bold uppercase tracking-tighter text-sm hover:bg-brand-black transition-colors flex items-center justify-between px-6 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="flex items-center gap-2"><Plus className="size-4" /> Add to Cart</span>
+            <span className="flex items-center gap-2">
+              <Plus className="size-4" /> {missingVariant ? `Select ${item.variantLabel}` : "Add to Cart"}
+            </span>
             <span className="font-mono">{formatPrice(total)}</span>
           </button>
+
         </div>
       </motion.div>
     </motion.div>

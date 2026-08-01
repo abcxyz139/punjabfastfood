@@ -90,8 +90,11 @@ export async function loadAdminDashboard(
   ] = await Promise.all([
     supabase
       .from("menu_items")
-      .select("id,name,category,description,price,image_key,tag,active,featured,display_order")
+      .select(
+        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons",
+      )
       .order("display_order", { ascending: true }),
+
     supabase
       .from("orders")
       .select("id,customer_name,customer_phone,subtotal,discount,total,status,notes,created_at,items")
@@ -99,8 +102,9 @@ export async function loadAdminDashboard(
       .limit(50),
     supabase
       .from("categories")
-      .select("id,name,slug,display_order,active")
+      .select("id,name,slug,display_order,active,default_product_type,variant_label,addon_label")
       .order("display_order", { ascending: true }),
+
     supabase
       .from("menu_item_variants")
       .select("id,menu_item_id,name,price,available,display_order")
@@ -155,7 +159,13 @@ export async function loadAdminDashboard(
       active: item.active,
       featured: item.featured,
       displayOrder: item.display_order,
+      productType: (item.product_type ?? "simple") as AdminMenuItem["productType"],
+      variantLabel: item.variant_label,
+      addonLabel: item.addon_label,
+      variantRequired: item.variant_required ?? true,
+      maxAddons: item.max_addons ?? null,
     })),
+
     orders: (orderResult.data ?? []).map((order) => ({
       id: order.id,
       customerName: order.customer_name,
@@ -174,7 +184,11 @@ export async function loadAdminDashboard(
       slug: c.slug,
       displayOrder: c.display_order,
       active: c.active,
+      defaultProductType: (c.default_product_type ?? "simple") as AdminCategory["defaultProductType"],
+      variantLabel: c.variant_label ?? "Choose an option",
+      addonLabel: c.addon_label ?? "Add-ons",
     })),
+
     variants: (variantResult.data ?? []).map((v) => ({
       id: v.id,
       menuItemId: v.menu_item_id,

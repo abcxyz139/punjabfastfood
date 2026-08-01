@@ -436,20 +436,34 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
   const [editing, setEditing] = useState<Partial<AdminMenuItem> & { id?: string }>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100 });
+  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null });
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!editing.name) return;
+    const common = {
+      name: editing.name!,
+      category: editing.category!,
+      description: editing.description!,
+      price: Number(editing.price),
+      imageKey: editing.imageKey || "burger",
+      tag: editing.tag || null,
+      active: !!editing.active,
+      featured: !!editing.featured,
+      displayOrder: Number(editing.displayOrder) || 100,
+      productType: editing.productType ?? "simple",
+      variantLabel: editing.variantLabel || null,
+      addonLabel: editing.addonLabel || null,
+      variantRequired: editing.variantRequired ?? true,
+      maxAddons: editing.maxAddons ?? null,
+    };
     await runAction(
-      () =>
-        editing.id
-          ? update({ data: { id: editing.id, name: editing.name!, category: editing.category!, description: editing.description!, price: Number(editing.price), imageKey: editing.imageKey || "burger", tag: editing.tag || null, active: !!editing.active, featured: !!editing.featured, displayOrder: Number(editing.displayOrder) || 100 } })
-          : create({ data: { name: editing.name!, category: editing.category!, description: editing.description!, price: Number(editing.price), imageKey: editing.imageKey || "burger", tag: editing.tag || null, active: !!editing.active, featured: !!editing.featured, displayOrder: Number(editing.displayOrder) || 100 } }),
+      () => (editing.id ? update({ data: { id: editing.id, ...common } }) : create({ data: common })),
       { refresh, setMessage, setSaving, okText: "Menu item saved." },
     );
     setEditing({});
   };
+
 
   return (
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
@@ -502,6 +516,30 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured</label>
             </div>
+
+            <div className="border-t border-brand-black/10 pt-3 space-y-3">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Product behaviour</div>
+              <Field label="Product type">
+                <select value={editing.productType ?? "simple"} onChange={(e) => setEditing({ ...editing, productType: e.target.value as AdminMenuItem["productType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
+                  <option value="simple">Simple — one price, add straight to cart</option>
+                  <option value="variable">Variable — customer picks a variant</option>
+                  <option value="combo">Combo / deal</option>
+                </select>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Variant label"><TextInput placeholder="Choose Size" value={editing.variantLabel ?? ""} onChange={(e) => setEditing({ ...editing, variantLabel: e.target.value })} /></Field>
+                <Field label="Add-on label"><TextInput placeholder="Add-ons" value={editing.addonLabel ?? ""} onChange={(e) => setEditing({ ...editing, addonLabel: e.target.value })} /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <Field label="Max add-ons (blank = unlimited)">
+                  <TextInput type="number" min="0" value={editing.maxAddons === null || editing.maxAddons === undefined ? "" : String(editing.maxAddons)} onChange={(e) => setEditing({ ...editing, maxAddons: e.target.value === "" ? null : Number(e.target.value) })} />
+                </Field>
+                <label className="flex items-center gap-2 text-sm font-bold pb-3">
+                  <input type="checkbox" checked={editing.variantRequired ?? true} onChange={(e) => setEditing({ ...editing, variantRequired: e.target.checked })} /> Variant required
+                </label>
+              </div>
+            </div>
+
             <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
           </form>
         </Card>
@@ -564,13 +602,15 @@ function VariantsAddonsPanel({ item, snapshot, refresh, setMessage, setSaving }:
 function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminCategory>) {
   const up = useServerFn(upsertCategory);
   const del = useServerFn(deleteCategory);
-  const [draft, setDraft] = useState({ id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true });
+  const empty = { id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true, defaultProductType: "simple" as AdminCategory["defaultProductType"], variantLabel: "Choose an option", addonLabel: "Add-ons" };
+  const [draft, setDraft] = useState(empty);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     await runAction(() => up({ data: draft }), { refresh, setMessage, setSaving, okText: "Category saved." });
-    setDraft({ id: undefined, name: "", slug: "", displayOrder: 100, active: true });
+    setDraft(empty);
   };
+
 
   return (
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
@@ -584,7 +624,7 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
                 <div className="font-mono text-[10px] text-brand-black/40">{c.slug} · order {c.displayOrder} · {c.active ? "active" : "hidden"}</div>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => setDraft({ id: c.id, name: c.name, slug: c.slug, displayOrder: c.displayOrder, active: c.active })} className="px-2 py-1 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
+                <button onClick={() => setDraft({ id: c.id, name: c.name, slug: c.slug, displayOrder: c.displayOrder, active: c.active, defaultProductType: c.defaultProductType, variantLabel: c.variantLabel, addonLabel: c.addonLabel })} className="px-2 py-1 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
                 <button onClick={() => runAction(() => del({ data: { id: c.id } }), { refresh, setMessage, setSaving })} className="px-2 py-1 bg-red-600 text-white"><Trash2 className="size-3" /></button>
               </div>
             </div>
@@ -597,7 +637,19 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
           <Field label="Name"><TextInput required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value, slug: draft.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} /></Field>
           <Field label="Slug"><TextInput required value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} /></Field>
           <Field label="Order"><TextInput type="number" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
+          <Field label="Default product type">
+            <select value={draft.defaultProductType} onChange={(e) => setDraft({ ...draft, defaultProductType: e.target.value as AdminCategory["defaultProductType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
+              <option value="simple">Simple</option>
+              <option value="variable">Variable</option>
+              <option value="combo">Combo / deal</option>
+            </select>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Variant label"><TextInput value={draft.variantLabel} onChange={(e) => setDraft({ ...draft, variantLabel: e.target.value })} /></Field>
+            <Field label="Add-on label"><TextInput value={draft.addonLabel} onChange={(e) => setDraft({ ...draft, addonLabel: e.target.value })} /></Field>
+          </div>
           <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Active</label>
+
           <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
         </form>
       </Card>

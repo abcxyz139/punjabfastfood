@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const ProductTypeSchema = z.enum(["simple", "variable", "combo"]);
+
 export const MenuItemInputSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(2).max(80),
@@ -11,7 +13,13 @@ export const MenuItemInputSchema = z.object({
   active: z.boolean().default(true),
   featured: z.boolean().default(false),
   displayOrder: z.number().int().min(0).max(9999).default(100),
+  productType: ProductTypeSchema.default("simple"),
+  variantLabel: z.string().trim().max(60).nullable().optional(),
+  addonLabel: z.string().trim().max(60).nullable().optional(),
+  variantRequired: z.boolean().default(true),
+  maxAddons: z.number().int().min(0).max(50).nullable().optional(),
 });
+
 
 export const OrderStatusInputSchema = z.object({
   id: z.string().uuid(),
@@ -41,7 +49,11 @@ export const CategoryInputSchema = z.object({
   slug: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/),
   displayOrder: z.number().int().min(0).max(9999).default(100),
   active: z.boolean().default(true),
+  defaultProductType: ProductTypeSchema.default("simple"),
+  variantLabel: z.string().trim().min(1).max(60).default("Choose an option"),
+  addonLabel: z.string().trim().min(1).max(60).default("Add-ons"),
 });
+
 
 export const VariantInputSchema = z.object({
   id: z.string().uuid().optional(),

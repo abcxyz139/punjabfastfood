@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import type { PublicMenuSnapshot, PublicMenuItem } from "./menu.types";
+import type { PublicMenuSnapshot, PublicMenuItem, ProductType } from "./menu.types";
 
 export type PublicSettings = {
   restaurantName: string;
@@ -43,14 +43,17 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
   const [catsRes, itemsRes, variantsRes, addonsRes] = await Promise.all([
     supabase
       .from("categories")
-      .select("id,name,slug,display_order,active")
+      .select("id,name,slug,display_order,active,default_product_type,variant_label,addon_label")
       .eq("active", true)
       .order("display_order", { ascending: true }),
     supabase
       .from("menu_items")
-      .select("id,name,description,price,image_key,tag,category,category_id,display_order,featured")
+      .select(
+        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons",
+      )
       .eq("active", true)
       .order("display_order", { ascending: true }),
+
     supabase
       .from("menu_item_variants")
       .select("id,menu_item_id,name,price,available,display_order")
@@ -94,27 +97,45 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
     addonsByItem.set(a.menu_item_id, list);
   }
 
+  const categories: PublicMenuSnapshot["categories"] = (catsRes.data ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    displayOrder: c.display_order,
+    active: c.active,
+    defaultProductType: (c.default_product_type ?? "simple") as ProductType,
+    variantLabel: c.variant_label ?? "Choose an option",
+    addonLabel: c.addon_label ?? "Add-ons",
+  }));
+
+  const catById = new Map(categories.map((c) => [c.id, c]));
+  const catByName = new Map(categories.map((c) => [c.name.toLowerCase(), c]));
+
   return {
-    categories: (catsRes.data ?? []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      displayOrder: c.display_order,
-      active: c.active,
-    })),
-    items: (itemsRes.data ?? []).map((i) => ({
-      id: i.id,
-      name: i.name,
-      description: i.description,
-      price: Number(i.price),
-      imageKey: i.image_key,
-      tag: i.tag,
-      category: i.category,
-      categoryId: i.category_id,
-      displayOrder: i.display_order,
-      featured: i.featured,
-      variants: variantsByItem.get(i.id) ?? [],
-      addons: addonsByItem.get(i.id) ?? [],
-    })),
+    categories,
+    items: (itemsRes.data ?? []).map((i) => {
+      const cat = (i.category_id ? catById.get(i.category_id) : undefined) ?? catByName.get(i.category.toLowerCase());
+      return {
+        id: i.id,
+        name: i.name,
+        description: i.description,
+        price: Number(i.price),
+        imageKey: i.image_key,
+        tag: i.tag,
+        category: i.category,
+        categoryId: i.category_id,
+        displayOrder: i.display_order,
+        featured: i.featured,
+        productType: (i.product_type ?? cat?.defaultProductType ?? "simple") as ProductType,
+        // Per-item label wins, otherwise the category default.
+        variantLabel: i.variant_label || cat?.variantLabel || "Choose an option",
+        addonLabel: i.addon_label || cat?.addonLabel || "Add-ons",
+        variantRequired: i.variant_required ?? true,
+        maxAddons: i.max_addons ?? null,
+        variants: variantsByItem.get(i.id) ?? [],
+        addons: addonsByItem.get(i.id) ?? [],
+      };
+    }),
   };
+
 });

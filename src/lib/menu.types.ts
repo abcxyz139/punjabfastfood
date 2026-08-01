@@ -1,10 +1,16 @@
+export type ProductType = "simple" | "variable" | "combo";
+
 export type MenuCategory = {
   id: string;
   name: string;
   slug: string;
   displayOrder: number;
   active: boolean;
+  defaultProductType: ProductType;
+  variantLabel: string;
+  addonLabel: string;
 };
+
 
 export type MenuVariant = {
   id: string;
@@ -33,9 +39,19 @@ export type PublicMenuItem = {
   categoryId: string | null;
   displayOrder: number;
   featured: boolean;
+  productType: ProductType;
+  /** Label for the variant group, e.g. "Choose Size", "Pieces", "Flavour". */
+  variantLabel: string;
+  /** Label for the add-on group, e.g. "Add-ons", "Sauces", "Toppings". */
+  addonLabel: string;
+  /** When false the customer may add the item without picking a variant. */
+  variantRequired: boolean;
+  /** Maximum add-ons a customer may pick; null = unlimited. */
+  maxAddons: number | null;
   variants: MenuVariant[];
   addons: MenuAddon[];
 };
+
 
 export type PublicMenuSnapshot = {
   categories: MenuCategory[];
