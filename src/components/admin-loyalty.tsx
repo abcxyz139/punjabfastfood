@@ -480,7 +480,7 @@ export function LoyaltyTab({
               <div key={c.phone} className="flex justify-between text-sm font-mono">
                 <span>{c.phone}</span>
                 <span>
-                  {c.orders} orders · Rs. {Math.round(c.spend)} · {c.rewards} rewards
+                  {c.orders} orders · ${Math.round(c.spend).toFixed(0)} · {c.rewards} rewards
                 </span>
               </div>
             ))}

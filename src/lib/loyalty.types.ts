@@ -98,7 +98,7 @@ export function rewardSummary(
     case "percent":
       return `${rewardValue}% off`;
     case "fixed":
-      return `Rs. ${rewardValue} off`;
+      return `$${rewardValue} off`;
     case "free_product":
       return "a free item";
     case "free_delivery":
