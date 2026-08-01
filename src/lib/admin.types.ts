@@ -1,4 +1,4 @@
-import type { ProductType } from "./menu.types";
+import type { Availability, ProductType } from "./menu.types";
 
 export type AdminMenuItem = {
   id: string;
@@ -16,7 +16,13 @@ export type AdminMenuItem = {
   addonLabel: string | null;
   variantRequired: boolean;
   maxAddons: number | null;
+  badges: string[];
+  searchKeywords: string[];
+  spiceLevel: number;
+  inStock: boolean;
+  availability: Availability;
 };
+
 
 
 export type AdminOrder = {
