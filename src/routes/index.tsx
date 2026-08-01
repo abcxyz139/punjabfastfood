@@ -10,6 +10,8 @@ import { createCustomerOrder } from "@/lib/orders.functions";
 import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
 import { BADGE_OPTIONS, isAvailableNow, availabilityLabel } from "@/lib/menu.types";
+import { LoyaltySection, CartLoyalty, FavoriteButton } from "@/components/loyalty";
+import type { CustomerOrderSummary } from "@/lib/loyalty.types";
 
 
 // ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
