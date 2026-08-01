@@ -7,10 +7,9 @@ import {
   upsertLoyaltyProgram,
 } from "@/lib/loyalty.functions";
 import type { LoyaltyProgram } from "@/lib/loyalty.types";
-import type { LoyaltyAnalytics } from "@/lib/loyalty.server";
 import type { AdminCategory, AdminMenuItem } from "@/lib/admin.types";
 
-type Payload = { programs: LoyaltyProgram[]; analytics: LoyaltyAnalytics };
+type Payload = Awaited<ReturnType<typeof getLoyaltyAdmin>>;
 
 const EMPTY: LoyaltyProgram = {
   id: "",
