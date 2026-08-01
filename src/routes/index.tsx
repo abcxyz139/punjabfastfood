@@ -685,7 +685,7 @@ function MenuCard({
     ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
     : formatPrice(item.price);
 
-
+  /** One-tap add for drinks, desserts and anything else with no required choices. */
   const handleQuickAdd = () => {
     addEntry({
       menuItemId: item.id,
@@ -697,18 +697,19 @@ function MenuCard({
       unitPrice: item.price,
       quantity: 1,
     });
+    toast.success(`${item.name} added`, { description: formatPrice(item.price), duration: 1600 });
   };
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.6, delay: (index % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={servable ? { y: -6 } : undefined}
-      className={`group bg-white p-6 transition-colors duration-500 relative ${servable ? "hover:bg-brand-gold" : ""}`}
+      exit={{ opacity: 0, scale: 0.95 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.35, delay: (index % 4) * 0.04, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={servable ? { y: -4 } : undefined}
+      className={`group bg-white p-3 sm:p-6 transition-colors duration-300 relative flex flex-col ${servable ? "sm:hover:bg-brand-gold" : ""}`}
     >
       <div className="absolute top-4 left-4 z-10">
         <FavoriteButton menuItemId={item.id} name={item.name} />
@@ -721,7 +722,7 @@ function MenuCard({
               {item.tag}
             </span>
           )}
-          {item.badges.slice(0, 3).map((b) => (
+          {item.badges.slice(0, 2).map((b) => (
             <span key={b} className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${BADGE_STYLE[b] ?? "bg-brand-black text-white"}`}>
               {b}
             </span>
@@ -732,33 +733,36 @@ function MenuCard({
         type="button"
         onClick={servable ? onOpenOptions : undefined}
         disabled={!servable}
-        aria-label={`View details for ${item.name}`}
+        aria-label={`View details for ${item.name}, ${priceLabel}`}
         className="block w-full text-left disabled:cursor-not-allowed"
       >
-      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
-        <img
-          src={resolveImg(item.imageKey)}
-          alt={item.name}
-          loading="lazy"
-          width={640}
-          height={640}
-          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${servable ? "group-hover:scale-110" : "grayscale opacity-60"}`}
-        />
-        {!servable && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5">
-              {item.inStock ? "Not Serving Now" : "Sold Out"}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="flex justify-between items-start mb-2 gap-3">
-        <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
-        <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>
-      </div>
+        {/* Image first: photos sell food. */}
+        <div className="aspect-square mb-3 sm:mb-5 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
+          <img
+            src={resolveImg(item.imageKey)}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            width={640}
+            height={640}
+            className={`w-full h-full object-cover transition-transform duration-500 ease-out ${servable ? "sm:group-hover:scale-105" : "grayscale opacity-60"}`}
+          />
+          {!servable && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 text-center">
+                {item.inStock ? "Not Serving Now" : "Sold Out"}
+              </span>
+            </div>
+          )}
+        </div>
+        {/* Price is the second thing a customer looks at, so it leads the text block. */}
+        <div className="font-mono text-lg sm:text-xl font-bold leading-none mb-1">{priceLabel}</div>
+        <h3 className="font-display text-lg sm:text-2xl uppercase leading-none line-clamp-2">{item.name}</h3>
       </button>
-      <p className="text-xs text-brand-black/60 leading-relaxed mb-3">{item.description}</p>
-      <div className="flex items-center gap-3 mb-4 min-h-4">
+      {item.description && (
+        <p className="hidden sm:block text-xs text-brand-black/60 leading-relaxed mt-2 line-clamp-1">{item.description}</p>
+      )}
+      <div className="flex items-center gap-2 mt-2 mb-3">
         {item.spiceLevel > 0 && (
           <span className="flex items-center gap-0.5" title={`Spice level ${item.spiceLevel} of 3`}>
             {Array.from({ length: item.spiceLevel }).map((_, i) => (
@@ -772,33 +776,34 @@ function MenuCard({
           </span>
         )}
       </div>
-      {!servable ? (
-        <button
-          disabled
-          className="w-full py-3 bg-brand-black/10 text-brand-black/45 text-[10px] font-bold uppercase tracking-widest cursor-not-allowed"
-        >
-          {ctaLabel}
-        </button>
-      ) : needsOptions ? (
-        <button
-          onClick={onOpenOptions}
-          className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
-        >
-          <Settings2 className="size-3" /> {ctaLabel}
-        </button>
-      ) : (
-        <button
-          onClick={handleQuickAdd}
-          className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="size-3" /> {ctaLabel}
-        </button>
-      )}
+      <div className="mt-auto">
+        {!servable ? (
+          <button
+            disabled
+            className="w-full min-h-12 bg-brand-black/10 text-brand-black/45 text-[11px] font-bold uppercase tracking-widest cursor-not-allowed px-2"
+          >
+            {ctaLabel}
+          </button>
+        ) : needsOptions ? (
+          <button
+            onClick={onOpenOptions}
+            className="w-full min-h-12 bg-brand-black text-white text-[11px] font-bold uppercase tracking-widest sm:group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Settings2 className="size-4" /> {item.productType === "combo" ? "Order Deal" : "Choose"}
+          </button>
+        ) : (
+          <button
+            onClick={handleQuickAdd}
+            className="w-full min-h-12 bg-brand-black text-white text-[11px] font-bold uppercase tracking-widest sm:group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Plus className="size-4" /> Add
+          </button>
+        )}
+      </div>
     </motion.div>
-
-
   );
 }
+
 
 type UpsellItem = { item: PublicMenuItem; onPick: () => void };
 
