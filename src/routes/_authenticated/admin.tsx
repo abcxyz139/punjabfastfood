@@ -637,7 +637,19 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
           <Field label="Name"><TextInput required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value, slug: draft.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} /></Field>
           <Field label="Slug"><TextInput required value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} /></Field>
           <Field label="Order"><TextInput type="number" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
+          <Field label="Default product type">
+            <select value={draft.defaultProductType} onChange={(e) => setDraft({ ...draft, defaultProductType: e.target.value as AdminCategory["defaultProductType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
+              <option value="simple">Simple</option>
+              <option value="variable">Variable</option>
+              <option value="combo">Combo / deal</option>
+            </select>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Variant label"><TextInput value={draft.variantLabel} onChange={(e) => setDraft({ ...draft, variantLabel: e.target.value })} /></Field>
+            <Field label="Add-on label"><TextInput value={draft.addonLabel} onChange={(e) => setDraft({ ...draft, addonLabel: e.target.value })} /></Field>
+          </div>
           <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Active</label>
+
           <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
         </form>
       </Card>
