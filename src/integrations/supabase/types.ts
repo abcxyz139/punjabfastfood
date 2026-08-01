@@ -104,6 +104,35 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          menu_item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_favorites_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gallery_images: {
         Row: {
           active: boolean
@@ -166,6 +195,204 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      loyalty_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          program_id: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          program_id?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          program_id?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_notifications_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_programs: {
+        Row: {
+          active: boolean
+          applicable_customer_ids: string[]
+          campaign: string
+          created_at: string
+          description: string
+          earn_type: string
+          expires_at: string | null
+          expiry_days: number | null
+          expiry_mode: string
+          id: string
+          name: string
+          priority: number
+          reward_label: string
+          reward_menu_item_id: string | null
+          reward_type: string
+          reward_value: number
+          stack_mode: string
+          target_category_id: string | null
+          target_menu_item_id: string | null
+          threshold: number
+          updated_at: string
+          usage_limit_per_customer: number | null
+        }
+        Insert: {
+          active?: boolean
+          applicable_customer_ids?: string[]
+          campaign?: string
+          created_at?: string
+          description?: string
+          earn_type?: string
+          expires_at?: string | null
+          expiry_days?: number | null
+          expiry_mode?: string
+          id?: string
+          name: string
+          priority?: number
+          reward_label?: string
+          reward_menu_item_id?: string | null
+          reward_type?: string
+          reward_value?: number
+          stack_mode?: string
+          target_category_id?: string | null
+          target_menu_item_id?: string | null
+          threshold?: number
+          updated_at?: string
+          usage_limit_per_customer?: number | null
+        }
+        Update: {
+          active?: boolean
+          applicable_customer_ids?: string[]
+          campaign?: string
+          created_at?: string
+          description?: string
+          earn_type?: string
+          expires_at?: string | null
+          expiry_days?: number | null
+          expiry_mode?: string
+          id?: string
+          name?: string
+          priority?: number
+          reward_label?: string
+          reward_menu_item_id?: string | null
+          reward_type?: string
+          reward_value?: number
+          stack_mode?: string
+          target_category_id?: string | null
+          target_menu_item_id?: string | null
+          threshold?: number
+          updated_at?: string
+          usage_limit_per_customer?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_programs_reward_menu_item_id_fkey"
+            columns: ["reward_menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_programs_target_category_id_fkey"
+            columns: ["target_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_programs_target_menu_item_id_fkey"
+            columns: ["target_menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_rewards: {
+        Row: {
+          created_at: string
+          customer_phone: string
+          expires_at: string | null
+          id: string
+          program_id: string
+          redeemed_order_id: string | null
+          reward_label: string
+          reward_type: string
+          reward_value: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_phone?: string
+          expires_at?: string | null
+          id?: string
+          program_id: string
+          redeemed_order_id?: string | null
+          reward_label?: string
+          reward_type: string
+          reward_value?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_phone?: string
+          expires_at?: string | null
+          id?: string
+          program_id?: string
+          redeemed_order_id?: string | null
+          reward_label?: string
+          reward_type?: string
+          reward_value?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_rewards_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_redeemed_order_id_fkey"
+            columns: ["redeemed_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       menu_item_addons: {
         Row: {
