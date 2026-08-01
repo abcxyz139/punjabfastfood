@@ -994,6 +994,7 @@ function OptionsModal({
         });
       }
     }
+    toast.success(`${displayName} added`, { description: formatPrice(unitPrice * qty), duration: 1600 });
     onClose();
   };
 
