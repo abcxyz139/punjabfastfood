@@ -660,6 +660,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
                   <TextInput type="time" value={editing.availability?.until ?? ""} onChange={(e) => setEditing({ ...editing, availability: { ...(editing.availability ?? { days: [], from: null, until: null }), until: e.target.value || null } })} />
                 </Field>
               </div>
+            </Advanced>
             </div>
 
 
