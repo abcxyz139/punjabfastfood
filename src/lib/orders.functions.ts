@@ -59,6 +59,17 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     for (const it of data.items) {
       const row = menuById.get(it.menuItemId);
       if (!row || row.active === false) throw new Error("One or more items are unavailable.");
+      if (row.in_stock === false) throw new Error(`${row.name} is sold out.`);
+      if (
+        !isAvailableNow({
+          days: row.available_days ?? [],
+          from: row.available_from ? String(row.available_from).slice(0, 5) : null,
+          until: row.available_until ? String(row.available_until).slice(0, 5) : null,
+        })
+      ) {
+        throw new Error(`${row.name} is not being served right now.`);
+      }
+
 
       let unitPrice = Number(row.price);
       let variantName: string | null = null;
