@@ -1870,28 +1870,35 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   const count = cart.reduce((s, c) => s + c.quantity, 0);
+  // Display-only estimate; the server still recalculates every total at checkout.
+  const estimate = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+    <div className="fixed bottom-5 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-40 flex items-end justify-end gap-3">
       <a
         href={buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}, I'd like to place an order.`)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="size-14 rounded-full bg-green-600 hover:bg-green-500 text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
+        className="size-14 shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
       >
         <MessageCircle className="size-6" />
       </a>
 
       <button
         onClick={onOpenCart}
-        aria-label="Open cart"
-        className="relative size-14 rounded-full bg-brand-red hover:bg-brand-orange text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
+        aria-label={count > 0 ? `Open cart, ${count} items, ${formatPrice(estimate)}` : "Open cart"}
+        className={`relative min-h-14 rounded-full bg-brand-red hover:bg-brand-orange text-white shadow-2xl active:scale-95 transition-all grid place-items-center ${count > 0 ? "flex-1 sm:flex-none px-5 flex items-center justify-between gap-4" : "size-14"}`}
       >
-        <ShoppingBag className="size-6" />
-        {count > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-6 h-6 px-1.5 grid place-items-center bg-brand-gold text-brand-black font-mono text-xs font-bold rounded-full">
-            {count}
-          </span>
+        {count > 0 ? (
+          <>
+            <span className="flex items-center gap-2 font-bold uppercase tracking-tight text-sm">
+              <ShoppingBag className="size-5" />
+              {count} {count === 1 ? "item" : "items"}
+            </span>
+            <span className="font-mono text-sm font-bold">{formatPrice(estimate)}</span>
+          </>
+        ) : (
+          <ShoppingBag className="size-6" />
         )}
       </button>
     </div>
