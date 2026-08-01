@@ -1917,6 +1917,9 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [rewardId, setRewardId] = useState<string | null>(null);
+  const [rewardDiscount, setRewardDiscount] = useState(0);
+  const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
