@@ -553,23 +553,32 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
               <h3 className="font-display text-2xl uppercase tracking-tighter">{editing.id ? "Edit Item" : "New Item"}</h3>
               <button type="button" onClick={() => setEditing({})}><X className="size-5" /></button>
             </div>
-            <Field label="Name"><TextInput value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required /></Field>
-            <Field label="Category">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40">
+              Step 1 photo · Step 2 name · Step 3 category · Step 4 price · Save
+            </p>
+            <Field label="1. Product photo"><ImageUploader value={editing.imageKey ?? ""} onChange={(v) => setEditing({ ...editing, imageKey: v })} setMessage={setMessage} /></Field>
+            <Field label="2. Product name"><TextInput value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required /></Field>
+            <Field label="3. Category">
               <select value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="w-full border border-brand-black/10 p-3 text-sm">
                 {snapshot.categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </Field>
-            <Field label="Description"><TextArea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={3} required /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Price"><TextInput type="number" step="0.01" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
-              <Field label="Order"><TextInput type="number" value={String(editing.displayOrder ?? 100)} onChange={(e) => setEditing({ ...editing, displayOrder: Number(e.target.value) })} /></Field>
-            </div>
-            <Field label="Image"><ImageUploader value={editing.imageKey ?? ""} onChange={(v) => setEditing({ ...editing, imageKey: v })} setMessage={setMessage} /></Field>
-            <Field label="Tag (optional)"><TextInput value={editing.tag ?? ""} onChange={(e) => setEditing({ ...editing, tag: e.target.value })} /></Field>
-            <div className="flex gap-4 text-sm font-bold">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured</label>
-            </div>
+            <Field label="4. Price"><TextInput type="number" step="0.01" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
+            <Field label="Short description (one line customers can skim)">
+              <TextArea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={2} required />
+            </Field>
+            <label className="flex items-center gap-2 text-sm font-bold">
+              <input type="checkbox" checked={!!editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Show on the website
+            </label>
+
+            <Advanced title="Extra display settings">
+              <Field label="Tag (optional)"><TextInput value={editing.tag ?? ""} onChange={(e) => setEditing({ ...editing, tag: e.target.value })} /></Field>
+              <Field label="Sort order"><TextInput type="number" value={String(editing.displayOrder ?? 100)} onChange={(e) => setEditing({ ...editing, displayOrder: Number(e.target.value) })} /></Field>
+              <label className="flex items-center gap-2 text-sm font-bold">
+                <input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured on the homepage
+              </label>
+            </Advanced>
+
 
             <Advanced title="Options &amp; variants behaviour">
               <Field label="Product type">
