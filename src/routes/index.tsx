@@ -213,6 +213,37 @@ function useCartState() {
 
 function Home() {
   const [cartOpen, setCartOpen] = useState(false);
+
+  const addPastItem = useCallback((i: CustomerOrderSummary["items"][number]) => {
+    addEntry({
+      menuItemId: i.menuItemId,
+      name: i.name,
+      variantId: i.variantId ?? null,
+      variantName: i.variantName ?? null,
+      addonIds: i.addons.map((a) => a.id),
+      addonNames: i.addons.map((a) => a.name),
+      unitPrice: i.unitPrice,
+      quantity: i.quantity,
+      notes: i.notes ?? null,
+    });
+  }, []);
+
+  const handleReorder = useCallback(
+    (order: CustomerOrderSummary) => {
+      order.items.forEach(addPastItem);
+      setCartOpen(true);
+    },
+    [addPastItem],
+  );
+
+  const handleReorderItem = useCallback(
+    (item: CustomerOrderSummary["items"][number]) => {
+      addPastItem(item);
+      setCartOpen(true);
+    },
+    [addPastItem],
+  );
+
   return (
     <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
       <LoadingScreen />
@@ -221,6 +252,7 @@ function Home() {
       <Marquee />
       <Menu />
       <Offers />
+      <LoyaltySection onReorder={handleReorder} onReorderItem={handleReorderItem} />
       <AiRecommendations />
       <Story />
       <Testimonials />
