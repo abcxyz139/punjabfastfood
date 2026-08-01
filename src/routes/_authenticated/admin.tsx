@@ -700,7 +700,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
                 selected={editing.mealUpgradeIds ?? []}
                 onChange={(ids) => setEditing({ ...editing, mealUpgradeIds: ids })}
               />
-            </div>
+            </Advanced>
 
             <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
           </form>
