@@ -1,5 +1,33 @@
 export type ProductType = "simple" | "variable" | "combo";
 
+/** Owner-selectable marketing badges shown on product cards. */
+export const BADGE_OPTIONS = [
+  "Best Seller",
+  "Popular",
+  "Chef Choice",
+  "Customer Favourite",
+  "New",
+  "Limited Time",
+  "Spicy",
+  "Healthy",
+  "Kids Favourite",
+  "Family Deal",
+  "Owner Recommended",
+] as const;
+
+export type ProductBadge = (typeof BADGE_OPTIONS)[number];
+
+/** Optional serving window: empty days = every day, null times = all day. */
+export type Availability = {
+  /** 0 = Sunday … 6 = Saturday. Empty means every day. */
+  days: number[];
+  /** "HH:MM" local time, or null for no lower bound. */
+  from: string | null;
+  /** "HH:MM" local time, or null for no upper bound. */
+  until: string | null;
+};
+
+
 export type MenuCategory = {
   id: string;
   name: string;
