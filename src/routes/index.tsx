@@ -411,9 +411,38 @@ function Marquee() {
 
 // ---------- Dynamic Menu ----------
 
+/** Fuzzy-ish scoring across name, description, category, keywords and badges. */
+function searchScore(item: PublicMenuItem, tokens: string[]): number {
+  if (tokens.length === 0) return 1;
+  const name = item.name.toLowerCase();
+  const haystack = [
+    item.name,
+    item.description,
+    item.category,
+    item.tag ?? "",
+    ...item.badges,
+    ...item.searchKeywords,
+    ...item.variants.map((v) => v.name),
+    ...item.addons.map((a) => a.name),
+  ]
+    .join(" ")
+    .toLowerCase();
+  let score = 0;
+  for (const t of tokens) {
+    if (name.startsWith(t)) score += 6;
+    else if (name.includes(t)) score += 4;
+    else if (haystack.includes(t)) score += 2;
+    else return 0;
+  }
+  return score;
+}
+
 function Menu() {
   const { data, isLoading, error } = useMenuData();
   const [cat, setCat] = useState<string>("All");
+  const [query, setQuery] = useState("");
+  const [spiceOnly, setSpiceOnly] = useState(false);
+  const [badgeFilter, setBadgeFilter] = useState<string | null>(null);
   const [modalItem, setModalItem] = useState<PublicMenuItem | null>(null);
 
   const categories = useMemo(() => {
@@ -422,7 +451,27 @@ function Menu() {
   }, [data]);
 
   const items = data?.items ?? [];
-  const filtered = cat === "All" ? items : items.filter((i) => i.category === cat);
+
+  const activeBadges = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) for (const b of i.badges) set.add(b);
+    return BADGE_OPTIONS.filter((b) => set.has(b));
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const now = new Date();
+    return items
+      .filter((i) => (cat === "All" ? true : i.category === cat))
+      .filter((i) => (spiceOnly ? i.spiceLevel > 0 : true))
+      .filter((i) => (badgeFilter ? i.badges.includes(badgeFilter) : true))
+      .map((i) => ({ item: i, score: searchScore(i, tokens), servable: i.inStock && isAvailableNow(i.availability, now) }))
+      .filter((r) => r.score > 0)
+      // Available items first, then relevance, then the owner's display order.
+      .sort((a, b) => Number(b.servable) - Number(a.servable) || b.score - a.score || a.item.displayOrder - b.item.displayOrder)
+      .map((r) => r.item);
+  }, [items, cat, query, spiceOnly, badgeFilter]);
+
 
   return (
     <section id="menu" className="py-24 md:py-32 px-6 max-w-7xl mx-auto">
