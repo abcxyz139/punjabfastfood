@@ -64,6 +64,7 @@ function buildOrderMessage(
   items.forEach((i, idx) => {
     lines.push(`${idx + 1}. ${i.name} × ${i.quantity} — $${(i.unitPrice * i.quantity).toFixed(2)}`);
     if (i.addonNames.length > 0) lines.push(`   Add-ons: ${i.addonNames.join(", ")}`);
+    if (i.notes) lines.push(`   Note: ${i.notes}`);
   });
   lines.push("", `*Subtotal:* $${totals.subtotal.toFixed(2)}`);
   lines.push(`*Delivery:* $${totals.delivery.toFixed(2)}`);
@@ -141,8 +142,8 @@ function useMenuData() {
 const CART_KEY = "pff:cart2";
 const PAST_KEY = "pff:past2";
 
-function entryKey(menuItemId: string, variantId: string | null, addonIds: string[]) {
-  return [menuItemId, variantId ?? "-", ...[...addonIds].sort()].join("|");
+function entryKey(menuItemId: string, variantId: string | null, addonIds: string[], notes?: string | null) {
+  return [menuItemId, variantId ?? "-", ...[...addonIds].sort(), notes?.trim() || "-"].join("|");
 }
 
 function readCart(key: string): CartEntry[] {
@@ -162,7 +163,7 @@ function writeCart(key: string, v: CartEntry[]) {
 }
 
 function addEntry(entry: Omit<CartEntry, "key">) {
-  const key = entryKey(entry.menuItemId, entry.variantId, entry.addonIds);
+  const key = entryKey(entry.menuItemId, entry.variantId, entry.addonIds, entry.notes);
   const cart = readCart(CART_KEY);
   const idx = cart.findIndex((e) => e.key === key);
   if (idx >= 0) {
@@ -676,6 +677,13 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
           ))}
         </div>
       )}
+      <button
+        type="button"
+        onClick={servable ? onOpenOptions : undefined}
+        disabled={!servable}
+        aria-label={`View details for ${item.name}`}
+        className="block w-full text-left disabled:cursor-not-allowed"
+      >
       <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
         <img
           src={resolveImg(item.imageKey)}
@@ -697,6 +705,7 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
         <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
         <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>
       </div>
+      </button>
       <p className="text-xs text-brand-black/60 leading-relaxed mb-3">{item.description}</p>
       <div className="flex items-center gap-3 mb-4 min-h-4">
         {item.spiceLevel > 0 && (
@@ -1923,6 +1932,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
             variantId: c.variantId ?? undefined,
             addonIds: c.addonIds,
             quantity: c.quantity,
+            notes: c.notes ?? null,
           })),
         },
       });
