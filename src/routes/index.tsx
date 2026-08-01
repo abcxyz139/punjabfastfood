@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2 } from "lucide-react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2, Search } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
 import { getPublicMenu, getPublicSettings } from "@/lib/menu.functions";
 import { createCustomerOrder } from "@/lib/orders.functions";
