@@ -40,6 +40,8 @@ import type {
   AdminTestimonial,
   AdminVariant,
 } from "@/lib/admin.types";
+import { BADGE_OPTIONS } from "@/lib/menu.types";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
