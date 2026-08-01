@@ -594,11 +594,36 @@ function Menu() {
   );
 }
 
+const BADGE_STYLE: Record<string, string> = {
+  "Best Seller": "bg-brand-red text-white",
+  Popular: "bg-brand-black text-brand-gold",
+  "Chef Choice": "bg-brand-black text-white",
+  "Customer Favourite": "bg-brand-gold text-brand-black",
+  New: "bg-emerald-600 text-white",
+  "Limited Time": "bg-brand-red text-white",
+  Spicy: "bg-orange-600 text-white",
+  Healthy: "bg-emerald-700 text-white",
+  "Kids Favourite": "bg-sky-600 text-white",
+  "Family Deal": "bg-brand-black text-brand-gold",
+  "Owner Recommended": "bg-brand-gold text-brand-black",
+};
+
 function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index: number; onOpenOptions: () => void }) {
   const hasVariants = item.variants.length > 0;
   const hasAddons = item.addons.length > 0;
   const needsOptions = hasVariants || hasAddons;
-  const ctaLabel = item.productType === "combo" ? "Order Deal" : needsOptions ? "Select Options" : "Add to Cart";
+  const onSchedule = isAvailableNow(item.availability);
+  const servable = item.inStock && onSchedule;
+  const scheduleText = availabilityLabel(item.availability);
+  const ctaLabel = !item.inStock
+    ? "Sold Out"
+    : !onSchedule
+      ? scheduleText ? `Available ${scheduleText}` : "Unavailable"
+      : item.productType === "combo"
+        ? "Order Deal"
+        : needsOptions
+          ? "Select Options"
+          : "Add to Cart";
 
   const priceLabel = hasVariants
     ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
@@ -626,30 +651,67 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
       exit={{ opacity: 0, scale: 0.9 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.6, delay: (index % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -6 }}
-      className="group bg-white p-6 hover:bg-brand-gold transition-colors duration-500 relative"
+      whileHover={servable ? { y: -6 } : undefined}
+      className={`group bg-white p-6 transition-colors duration-500 relative ${servable ? "hover:bg-brand-gold" : ""}`}
     >
-      {item.tag && (
-        <div className={`absolute top-4 right-4 z-10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag.toLowerCase() === "hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
-          {item.tag}
+      {(item.badges.length > 0 || item.tag) && (
+        <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+          {item.tag && (
+            <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag.toLowerCase() === "hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
+              {item.tag}
+            </span>
+          )}
+          {item.badges.slice(0, 3).map((b) => (
+            <span key={b} className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${BADGE_STYLE[b] ?? "bg-brand-black text-white"}`}>
+              {b}
+            </span>
+          ))}
         </div>
       )}
-      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5">
+      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
         <img
           src={resolveImg(item.imageKey)}
           alt={item.name}
           loading="lazy"
           width={640}
           height={640}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${servable ? "group-hover:scale-110" : "grayscale opacity-60"}`}
         />
+        {!servable && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5">
+              {item.inStock ? "Not Serving Now" : "Sold Out"}
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex justify-between items-start mb-2 gap-3">
         <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
         <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>
       </div>
-      <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.description}</p>
-      {needsOptions ? (
+      <p className="text-xs text-brand-black/60 leading-relaxed mb-3">{item.description}</p>
+      <div className="flex items-center gap-3 mb-4 min-h-4">
+        {item.spiceLevel > 0 && (
+          <span className="flex items-center gap-0.5" title={`Spice level ${item.spiceLevel} of 3`}>
+            {Array.from({ length: item.spiceLevel }).map((_, i) => (
+              <Flame key={i} className="size-3 text-brand-red" />
+            ))}
+          </span>
+        )}
+        {servable && scheduleText && (
+          <span className="font-mono text-[9px] uppercase tracking-wider text-brand-black/45 flex items-center gap-1">
+            <Clock className="size-3" /> {scheduleText}
+          </span>
+        )}
+      </div>
+      {!servable ? (
+        <button
+          disabled
+          className="w-full py-3 bg-brand-black/10 text-brand-black/45 text-[10px] font-bold uppercase tracking-widest cursor-not-allowed"
+        >
+          {ctaLabel}
+        </button>
+      ) : needsOptions ? (
         <button
           onClick={onOpenOptions}
           className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
@@ -665,6 +727,7 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
         </button>
       )}
     </motion.div>
+
 
   );
 }
