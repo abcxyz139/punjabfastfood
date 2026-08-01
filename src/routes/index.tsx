@@ -2107,10 +2107,10 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
                   <div className="pt-4 mt-4 border-t border-brand-black/10 space-y-3">
                     <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/50">Delivery Details</div>
-                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
-                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone Number *" type="tel" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
-                    <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery Address *" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors resize-none" />
-                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors resize-none" />
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" autoComplete="name" className="w-full min-h-12 border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors" />
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone Number *" type="tel" inputMode="tel" autoComplete="tel" className="w-full min-h-12 border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors" />
+                    <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery Address *" rows={2} autoComplete="street-address" className="w-full border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors resize-none" />
+                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Note (optional)" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors resize-none" />
                   </div>
                 </div>
               )}
