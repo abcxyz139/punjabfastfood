@@ -80,10 +80,12 @@ export function FavoriteButton({ menuItemId, name }: { menuItemId: string; name:
 
 export function CartLoyalty({
   rewardId,
+  subtotal,
   onSelectReward,
 }: {
   rewardId: string | null;
-  onSelectReward: (id: string | null) => void;
+  subtotal: number;
+  onSelectReward: (id: string | null, estimatedDiscount: number) => void;
 }) {
   const { data, isLoading } = useLoyalty();
   const progress = data?.progress ?? [];
@@ -129,7 +131,16 @@ export function CartLoyalty({
             <button
               key={r.id}
               type="button"
-              onClick={() => onSelectReward(rewardId === r.id ? null : r.id)}
+              onClick={() => {
+                if (rewardId === r.id) return onSelectReward(null, 0);
+                const est =
+                  r.rewardType === "percent"
+                    ? Math.round(((subtotal * Math.min(100, r.rewardValue)) / 100) * 100) / 100
+                    : r.rewardType === "fixed"
+                      ? Math.min(r.rewardValue, subtotal)
+                      : 0;
+                onSelectReward(r.id, est);
+              }}
               aria-pressed={rewardId === r.id}
               className={`w-full text-left px-3 py-3 border text-xs flex items-center gap-2 transition-colors ${
                 rewardId === r.id
