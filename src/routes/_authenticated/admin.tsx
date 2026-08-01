@@ -456,7 +456,15 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
       addonLabel: editing.addonLabel || null,
       variantRequired: editing.variantRequired ?? true,
       maxAddons: editing.maxAddons ?? null,
+      badges: editing.badges ?? [],
+      searchKeywords: editing.searchKeywords ?? [],
+      spiceLevel: Number(editing.spiceLevel ?? 0),
+      inStock: editing.inStock ?? true,
+      availableDays: editing.availability?.days ?? [],
+      availableFrom: editing.availability?.from || null,
+      availableUntil: editing.availability?.until || null,
     };
+
     await runAction(
       () => (editing.id ? update({ data: { id: editing.id, ...common } }) : create({ data: common })),
       { refresh, setMessage, setSaving, okText: "Menu item saved." },
