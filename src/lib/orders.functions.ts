@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CustomerOrderInputSchema } from "./admin.schemas";
+import { isAvailableNow } from "./menu.types";
+
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -22,7 +24,7 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     const addonIds = Array.from(new Set(data.items.flatMap((i) => i.addonIds ?? [])));
 
     const [menuRes, variantsRes, addonsRes] = await Promise.all([
-      context.supabase.from("menu_items").select("id,name,price,active").in("id", itemIds),
+      context.supabase.from("menu_items").select("id,name,price,active,in_stock,available_days,available_from,available_until").in("id", itemIds),
       variantIds.length
         ? context.supabase
             .from("menu_item_variants")
@@ -59,6 +61,17 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     for (const it of data.items) {
       const row = menuById.get(it.menuItemId);
       if (!row || row.active === false) throw new Error("One or more items are unavailable.");
+      if (row.in_stock === false) throw new Error(`${row.name} is sold out.`);
+      if (
+        !isAvailableNow({
+          days: row.available_days ?? [],
+          from: row.available_from ? String(row.available_from).slice(0, 5) : null,
+          until: row.available_until ? String(row.available_until).slice(0, 5) : null,
+        })
+      ) {
+        throw new Error(`${row.name} is not being served right now.`);
+      }
+
 
       let unitPrice = Number(row.price);
       let variantName: string | null = null;

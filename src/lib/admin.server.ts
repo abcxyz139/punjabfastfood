@@ -91,9 +91,10 @@ export async function loadAdminDashboard(
     supabase
       .from("menu_items")
       .select(
-        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons",
+        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until",
       )
       .order("display_order", { ascending: true }),
+
 
     supabase
       .from("orders")
@@ -164,7 +165,17 @@ export async function loadAdminDashboard(
       addonLabel: item.addon_label,
       variantRequired: item.variant_required ?? true,
       maxAddons: item.max_addons ?? null,
+      badges: item.badges ?? [],
+      searchKeywords: item.search_keywords ?? [],
+      spiceLevel: item.spice_level ?? 0,
+      inStock: item.in_stock ?? true,
+      availability: {
+        days: item.available_days ?? [],
+        from: item.available_from ? String(item.available_from).slice(0, 5) : null,
+        until: item.available_until ? String(item.available_until).slice(0, 5) : null,
+      },
     })),
+
 
     orders: (orderResult.data ?? []).map((order) => ({
       id: order.id,

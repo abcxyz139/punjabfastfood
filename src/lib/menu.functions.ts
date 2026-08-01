@@ -49,8 +49,9 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
     supabase
       .from("menu_items")
       .select(
-        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons",
+        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until",
       )
+
       .eq("active", true)
       .order("display_order", { ascending: true }),
 
@@ -132,8 +133,19 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
         addonLabel: i.addon_label || cat?.addonLabel || "Add-ons",
         variantRequired: i.variant_required ?? true,
         maxAddons: i.max_addons ?? null,
+        badges: i.badges ?? [],
+        searchKeywords: i.search_keywords ?? [],
+        spiceLevel: i.spice_level ?? 0,
+        inStock: i.in_stock ?? true,
+        availability: {
+          days: i.available_days ?? [],
+          // Postgres time comes back as "HH:MM:SS" — trim to HH:MM.
+          from: i.available_from ? String(i.available_from).slice(0, 5) : null,
+          until: i.available_until ? String(i.available_until).slice(0, 5) : null,
+        },
         variants: variantsByItem.get(i.id) ?? [],
         addons: addonsByItem.get(i.id) ?? [],
+
       };
     }),
   };

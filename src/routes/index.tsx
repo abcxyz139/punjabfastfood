@@ -3,12 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2 } from "lucide-react";
+import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2, Search } from "lucide-react";
 import { recommendDishes } from "@/lib/recommend.functions";
 import { getPublicMenu, getPublicSettings } from "@/lib/menu.functions";
 import { createCustomerOrder } from "@/lib/orders.functions";
 import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
+import { BADGE_OPTIONS, isAvailableNow, availabilityLabel } from "@/lib/menu.types";
+
 
 // ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
 const DEFAULT_RESTAURANT_NAME = "Punjab Fast Food";
@@ -411,9 +413,38 @@ function Marquee() {
 
 // ---------- Dynamic Menu ----------
 
+/** Fuzzy-ish scoring across name, description, category, keywords and badges. */
+function searchScore(item: PublicMenuItem, tokens: string[]): number {
+  if (tokens.length === 0) return 1;
+  const name = item.name.toLowerCase();
+  const haystack = [
+    item.name,
+    item.description,
+    item.category,
+    item.tag ?? "",
+    ...item.badges,
+    ...item.searchKeywords,
+    ...item.variants.map((v) => v.name),
+    ...item.addons.map((a) => a.name),
+  ]
+    .join(" ")
+    .toLowerCase();
+  let score = 0;
+  for (const t of tokens) {
+    if (name.startsWith(t)) score += 6;
+    else if (name.includes(t)) score += 4;
+    else if (haystack.includes(t)) score += 2;
+    else return 0;
+  }
+  return score;
+}
+
 function Menu() {
   const { data, isLoading, error } = useMenuData();
   const [cat, setCat] = useState<string>("All");
+  const [query, setQuery] = useState("");
+  const [spiceOnly, setSpiceOnly] = useState(false);
+  const [badgeFilter, setBadgeFilter] = useState<string | null>(null);
   const [modalItem, setModalItem] = useState<PublicMenuItem | null>(null);
 
   const categories = useMemo(() => {
@@ -422,7 +453,27 @@ function Menu() {
   }, [data]);
 
   const items = data?.items ?? [];
-  const filtered = cat === "All" ? items : items.filter((i) => i.category === cat);
+
+  const activeBadges = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) for (const b of i.badges) set.add(b);
+    return BADGE_OPTIONS.filter((b) => set.has(b));
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const now = new Date();
+    return items
+      .filter((i) => (cat === "All" ? true : i.category === cat))
+      .filter((i) => (spiceOnly ? i.spiceLevel > 0 : true))
+      .filter((i) => (badgeFilter ? i.badges.includes(badgeFilter) : true))
+      .map((i) => ({ item: i, score: searchScore(i, tokens), servable: i.inStock && isAvailableNow(i.availability, now) }))
+      .filter((r) => r.score > 0)
+      // Available items first, then relevance, then the owner's display order.
+      .sort((a, b) => Number(b.servable) - Number(a.servable) || b.score - a.score || a.item.displayOrder - b.item.displayOrder)
+      .map((r) => r.item);
+  }, [items, cat, query, spiceOnly, badgeFilter]);
+
 
   return (
     <section id="menu" className="py-24 md:py-32 px-6 max-w-7xl mx-auto">
@@ -455,6 +506,49 @@ function Menu() {
         </div>
       </motion.div>
 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-10 space-y-3"
+      >
+        <div className="flex items-center gap-3 bg-white border border-brand-black/10 px-4 py-3 focus-within:border-brand-red transition-colors">
+          <Search className="size-4 text-brand-black/40 flex-shrink-0" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search dishes, ingredients or deals…"
+            aria-label="Search the menu"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-brand-black/35"
+          />
+          {query && (
+            <button onClick={() => setQuery("")} aria-label="Clear search" className="text-brand-black/40 hover:text-brand-red">
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5 font-mono text-[10px] uppercase font-bold">
+          <button
+            onClick={() => setSpiceOnly((v) => !v)}
+            className={`px-3 py-1.5 border transition-colors flex items-center gap-1.5 ${spiceOnly ? "bg-brand-red text-white border-brand-red" : "border-brand-black/15 hover:border-brand-black"}`}
+          >
+            <Flame className="size-3" /> Spicy
+          </button>
+          {activeBadges.map((b) => (
+            <button
+              key={b}
+              onClick={() => setBadgeFilter(badgeFilter === b ? null : b)}
+              className={`px-3 py-1.5 border transition-colors ${badgeFilter === b ? "bg-brand-black text-white border-brand-black" : "border-brand-black/15 hover:border-brand-black"}`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+
+
       {isLoading && (
         <div className="flex items-center justify-center py-24 text-brand-black/50 font-mono text-xs uppercase tracking-widest">
           <Loader2 className="size-4 animate-spin mr-3" /> Loading menu…
@@ -466,7 +560,20 @@ function Menu() {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!isLoading && !error && filtered.length === 0 && (
+        <div className="text-center py-20 border border-dashed border-brand-black/15">
+          <p className="font-display text-3xl uppercase tracking-tighter">No dishes match that</p>
+          <p className="text-xs text-brand-black/50 mt-2 mb-5">Try another word, or clear the filters.</p>
+          <button
+            onClick={() => { setQuery(""); setSpiceOnly(false); setBadgeFilter(null); setCat("All"); }}
+            className="px-5 py-3 bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-brand-red transition-colors"
+          >
+            Reset filters
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !error && filtered.length > 0 && (
         <motion.div
           layout
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
@@ -479,6 +586,7 @@ function Menu() {
         </motion.div>
       )}
 
+
       <AnimatePresence>
         {modalItem && <OptionsModal item={modalItem} onClose={() => setModalItem(null)} />}
       </AnimatePresence>
@@ -486,11 +594,36 @@ function Menu() {
   );
 }
 
+const BADGE_STYLE: Record<string, string> = {
+  "Best Seller": "bg-brand-red text-white",
+  Popular: "bg-brand-black text-brand-gold",
+  "Chef Choice": "bg-brand-black text-white",
+  "Customer Favourite": "bg-brand-gold text-brand-black",
+  New: "bg-emerald-600 text-white",
+  "Limited Time": "bg-brand-red text-white",
+  Spicy: "bg-orange-600 text-white",
+  Healthy: "bg-emerald-700 text-white",
+  "Kids Favourite": "bg-sky-600 text-white",
+  "Family Deal": "bg-brand-black text-brand-gold",
+  "Owner Recommended": "bg-brand-gold text-brand-black",
+};
+
 function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index: number; onOpenOptions: () => void }) {
   const hasVariants = item.variants.length > 0;
   const hasAddons = item.addons.length > 0;
   const needsOptions = hasVariants || hasAddons;
-  const ctaLabel = item.productType === "combo" ? "Order Deal" : needsOptions ? "Select Options" : "Add to Cart";
+  const onSchedule = isAvailableNow(item.availability);
+  const servable = item.inStock && onSchedule;
+  const scheduleText = availabilityLabel(item.availability);
+  const ctaLabel = !item.inStock
+    ? "Sold Out"
+    : !onSchedule
+      ? scheduleText ? `Available ${scheduleText}` : "Unavailable"
+      : item.productType === "combo"
+        ? "Order Deal"
+        : needsOptions
+          ? "Select Options"
+          : "Add to Cart";
 
   const priceLabel = hasVariants
     ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
@@ -518,30 +651,67 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
       exit={{ opacity: 0, scale: 0.9 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.6, delay: (index % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -6 }}
-      className="group bg-white p-6 hover:bg-brand-gold transition-colors duration-500 relative"
+      whileHover={servable ? { y: -6 } : undefined}
+      className={`group bg-white p-6 transition-colors duration-500 relative ${servable ? "hover:bg-brand-gold" : ""}`}
     >
-      {item.tag && (
-        <div className={`absolute top-4 right-4 z-10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag.toLowerCase() === "hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
-          {item.tag}
+      {(item.badges.length > 0 || item.tag) && (
+        <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+          {item.tag && (
+            <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag.toLowerCase() === "hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
+              {item.tag}
+            </span>
+          )}
+          {item.badges.slice(0, 3).map((b) => (
+            <span key={b} className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${BADGE_STYLE[b] ?? "bg-brand-black text-white"}`}>
+              {b}
+            </span>
+          ))}
         </div>
       )}
-      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5">
+      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
         <img
           src={resolveImg(item.imageKey)}
           alt={item.name}
           loading="lazy"
           width={640}
           height={640}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${servable ? "group-hover:scale-110" : "grayscale opacity-60"}`}
         />
+        {!servable && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5">
+              {item.inStock ? "Not Serving Now" : "Sold Out"}
+            </span>
+          </div>
+        )}
       </div>
       <div className="flex justify-between items-start mb-2 gap-3">
         <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
         <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>
       </div>
-      <p className="text-xs text-brand-black/60 leading-relaxed mb-6">{item.description}</p>
-      {needsOptions ? (
+      <p className="text-xs text-brand-black/60 leading-relaxed mb-3">{item.description}</p>
+      <div className="flex items-center gap-3 mb-4 min-h-4">
+        {item.spiceLevel > 0 && (
+          <span className="flex items-center gap-0.5" title={`Spice level ${item.spiceLevel} of 3`}>
+            {Array.from({ length: item.spiceLevel }).map((_, i) => (
+              <Flame key={i} className="size-3 text-brand-red" />
+            ))}
+          </span>
+        )}
+        {servable && scheduleText && (
+          <span className="font-mono text-[9px] uppercase tracking-wider text-brand-black/45 flex items-center gap-1">
+            <Clock className="size-3" /> {scheduleText}
+          </span>
+        )}
+      </div>
+      {!servable ? (
+        <button
+          disabled
+          className="w-full py-3 bg-brand-black/10 text-brand-black/45 text-[10px] font-bold uppercase tracking-widest cursor-not-allowed"
+        >
+          {ctaLabel}
+        </button>
+      ) : needsOptions ? (
         <button
           onClick={onOpenOptions}
           className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
@@ -557,6 +727,7 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
         </button>
       )}
     </motion.div>
+
 
   );
 }
