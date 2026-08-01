@@ -2066,6 +2066,15 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </div>
                   ))}
 
+                  <CartLoyalty
+                    rewardId={rewardId}
+                    subtotal={subtotal}
+                    onSelectReward={(id, est) => {
+                      setRewardId(id);
+                      setRewardDiscount(est);
+                    }}
+                  />
+
                   <div className="pt-4 mt-4 border-t border-brand-black/10 space-y-3">
                     <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/50">Delivery Details</div>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
@@ -2080,6 +2089,9 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
             {cart.length > 0 && (
               <div className="border-t border-brand-black/10 px-6 py-4 space-y-2 bg-brand-cream">
                 <div className="flex justify-between text-sm"><span className="text-brand-black/60">Subtotal</span><span className="font-mono font-bold">{formatPrice(subtotal)}</span></div>
+                {rewardId && (
+                  <div className="flex justify-between text-sm text-brand-red"><span>Loyalty reward</span><span className="font-mono font-bold">-{formatPrice(rewardDiscount)}</span></div>
+                )}
                 <div className="flex justify-between text-sm"><span className="text-brand-black/60">Delivery</span><span className="font-mono font-bold">{formatPrice(delivery)}</span></div>
                 <div className="flex justify-between items-baseline pt-2 border-t border-brand-black/10">
                   <span className="font-display text-xl uppercase tracking-tighter">Total</span>
