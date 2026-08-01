@@ -516,6 +516,30 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured</label>
             </div>
+
+            <div className="border-t border-brand-black/10 pt-3 space-y-3">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Product behaviour</div>
+              <Field label="Product type">
+                <select value={editing.productType ?? "simple"} onChange={(e) => setEditing({ ...editing, productType: e.target.value as AdminMenuItem["productType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
+                  <option value="simple">Simple — one price, add straight to cart</option>
+                  <option value="variable">Variable — customer picks a variant</option>
+                  <option value="combo">Combo / deal</option>
+                </select>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Variant label"><TextInput placeholder="Choose Size" value={editing.variantLabel ?? ""} onChange={(e) => setEditing({ ...editing, variantLabel: e.target.value })} /></Field>
+                <Field label="Add-on label"><TextInput placeholder="Add-ons" value={editing.addonLabel ?? ""} onChange={(e) => setEditing({ ...editing, addonLabel: e.target.value })} /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <Field label="Max add-ons (blank = unlimited)">
+                  <TextInput type="number" min="0" value={editing.maxAddons === null || editing.maxAddons === undefined ? "" : String(editing.maxAddons)} onChange={(e) => setEditing({ ...editing, maxAddons: e.target.value === "" ? null : Number(e.target.value) })} />
+                </Field>
+                <label className="flex items-center gap-2 text-sm font-bold pb-3">
+                  <input type="checkbox" checked={editing.variantRequired ?? true} onChange={(e) => setEditing({ ...editing, variantRequired: e.target.checked })} /> Variant required
+                </label>
+              </div>
+            </div>
+
             <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
           </form>
         </Card>
