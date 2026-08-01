@@ -548,6 +548,76 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
               </div>
             </div>
 
+            <div className="border-t border-brand-black/10 pt-3 space-y-3">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Discovery &amp; availability</div>
+              <Field label="Badges (max 4)">
+                <div className="flex flex-wrap gap-1.5">
+                  {BADGE_OPTIONS.map((b) => {
+                    const list = editing.badges ?? [];
+                    const on = list.includes(b);
+                    return (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setEditing({ ...editing, badges: on ? list.filter((x) => x !== b) : list.length >= 4 ? list : [...list, b] })}
+                        className={`px-2 py-1 text-[10px] font-bold uppercase border ${on ? "bg-brand-red text-white border-brand-red" : "border-brand-black/15 text-brand-black/60"}`}
+                      >
+                        {b}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              <Field label="Search keywords (comma separated — ingredients, aliases)">
+                <TextInput
+                  placeholder="chicken, cheese, zinger, spicy"
+                  value={(editing.searchKeywords ?? []).join(", ")}
+                  onChange={(e) => setEditing({ ...editing, searchKeywords: e.target.value.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 30) })}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <Field label="Spice level (0–3)">
+                  <select value={String(editing.spiceLevel ?? 0)} onChange={(e) => setEditing({ ...editing, spiceLevel: Number(e.target.value) })} className="w-full border border-brand-black/10 p-3 text-sm">
+                    <option value="0">Not spicy</option>
+                    <option value="1">Mild</option>
+                    <option value="2">Spicy</option>
+                    <option value="3">Very spicy</option>
+                  </select>
+                </Field>
+                <label className="flex items-center gap-2 text-sm font-bold pb-3">
+                  <input type="checkbox" checked={editing.inStock ?? true} onChange={(e) => setEditing({ ...editing, inStock: e.target.checked })} /> In stock
+                </label>
+              </div>
+              <Field label="Available days (none selected = every day)">
+                <div className="flex flex-wrap gap-1.5">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => {
+                    const av = editing.availability ?? { days: [], from: null, until: null };
+                    const on = av.days.includes(i);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setEditing({ ...editing, availability: { ...av, days: on ? av.days.filter((x) => x !== i) : [...av.days, i] } })}
+                        className={`px-2 py-1 text-[10px] font-bold uppercase border ${on ? "bg-brand-black text-white border-brand-black" : "border-brand-black/15 text-brand-black/60"}`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Served from (blank = all day)">
+                  <TextInput type="time" value={editing.availability?.from ?? ""} onChange={(e) => setEditing({ ...editing, availability: { ...(editing.availability ?? { days: [], from: null, until: null }), from: e.target.value || null } })} />
+                </Field>
+                <Field label="Served until">
+                  <TextInput type="time" value={editing.availability?.until ?? ""} onChange={(e) => setEditing({ ...editing, availability: { ...(editing.availability ?? { days: [], from: null, until: null }), until: e.target.value || null } })} />
+                </Field>
+              </div>
+            </div>
+
+
+
             <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
           </form>
         </Card>
