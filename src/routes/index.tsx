@@ -9,6 +9,8 @@ import { getPublicMenu, getPublicSettings } from "@/lib/menu.functions";
 import { createCustomerOrder } from "@/lib/orders.functions";
 import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
+import { BADGE_OPTIONS, isAvailableNow, availabilityLabel } from "@/lib/menu.types";
+
 
 // ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
 const DEFAULT_RESTAURANT_NAME = "Punjab Fast Food";
