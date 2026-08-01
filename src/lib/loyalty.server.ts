@@ -141,7 +141,7 @@ function unitFor(program: LoyaltyProgram): LoyaltyProgressEntry["unit"] {
 function progressMessage(program: LoyaltyProgram, remaining: number) {
   const reward = rewardSummary(program.rewardType, program.rewardValue, program.rewardLabel);
   if (remaining <= 0) return `Reward unlocked — ${reward} is waiting for you.`;
-  if (program.earnType === "amount") return `Spend Rs. ${Math.ceil(remaining)} more to unlock ${reward}.`;
+  if (program.earnType === "amount") return `Spend $${Math.ceil(remaining)} more to unlock ${reward}.`;
   if (program.earnType === "order") {
     return `${Math.ceil(remaining)} more order${remaining > 1 ? "s" : ""} to unlock ${reward}.`;
   }

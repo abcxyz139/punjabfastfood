@@ -106,8 +106,8 @@ export function CartLoyalty({
           <div className="flex justify-between text-xs font-bold">
             <span>{p.name}</span>
             <span className="font-mono">
-              {p.unit === "amount" ? `Rs. ${Math.round(p.current)}` : Math.round(p.current)} /{" "}
-              {p.unit === "amount" ? `Rs. ${Math.round(p.threshold)}` : Math.round(p.threshold)}
+              {p.unit === "amount" ? `$${Math.round(p.current)}` : Math.round(p.current)} /{" "}
+              {p.unit === "amount" ? `$${Math.round(p.threshold)}` : Math.round(p.threshold)}
             </span>
           </div>
           <div className="mt-2 h-1.5 bg-brand-black/10 overflow-hidden">
