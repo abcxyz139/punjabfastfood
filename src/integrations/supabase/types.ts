@@ -253,6 +253,10 @@ export type Database = {
         Row: {
           active: boolean
           addon_label: string | null
+          available_days: number[]
+          available_from: string | null
+          available_until: string | null
+          badges: string[]
           category: string
           category_id: string | null
           created_at: string
@@ -261,10 +265,13 @@ export type Database = {
           featured: boolean
           id: string
           image_key: string
+          in_stock: boolean
           max_addons: number | null
           name: string
           price: number
           product_type: string
+          search_keywords: string[]
+          spice_level: number
           tag: string | null
           updated_at: string
           variant_label: string | null
@@ -273,6 +280,10 @@ export type Database = {
         Insert: {
           active?: boolean
           addon_label?: string | null
+          available_days?: number[]
+          available_from?: string | null
+          available_until?: string | null
+          badges?: string[]
           category: string
           category_id?: string | null
           created_at?: string
@@ -281,10 +292,13 @@ export type Database = {
           featured?: boolean
           id?: string
           image_key?: string
+          in_stock?: boolean
           max_addons?: number | null
           name: string
           price: number
           product_type?: string
+          search_keywords?: string[]
+          spice_level?: number
           tag?: string | null
           updated_at?: string
           variant_label?: string | null
@@ -293,6 +307,10 @@ export type Database = {
         Update: {
           active?: boolean
           addon_label?: string | null
+          available_days?: number[]
+          available_from?: string | null
+          available_until?: string | null
+          badges?: string[]
           category?: string
           category_id?: string | null
           created_at?: string
@@ -301,10 +319,13 @@ export type Database = {
           featured?: boolean
           id?: string
           image_key?: string
+          in_stock?: boolean
           max_addons?: number | null
           name?: string
           price?: number
           product_type?: string
+          search_keywords?: string[]
+          spice_level?: number
           tag?: string | null
           updated_at?: string
           variant_label?: string | null
