@@ -89,6 +89,27 @@ export type PublicMenuItem = {
   addons: MenuAddon[];
 };
 
+/** True when the item is servable at `now` (local time). */
+export function isAvailableNow(a: Availability, now: Date = new Date()): boolean {
+  if (a.days.length > 0 && !a.days.includes(now.getDay())) return false;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const parse = (t: string) => {
+    const [h, m] = t.split(":");
+    return Number(h) * 60 + Number(m ?? 0);
+  };
+  if (a.from && minutes < parse(a.from)) return false;
+  if (a.until && minutes > parse(a.until)) return false;
+  return true;
+}
+
+/** Short human label for a schedule, e.g. "Fri · 11:00–15:00". Empty when always on. */
+export function availabilityLabel(a: Availability): string {
+  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const parts: string[] = [];
+  if (a.days.length > 0) parts.push([...a.days].sort().map((d) => names[d]).join(", "));
+  if (a.from || a.until) parts.push(`${a.from ?? "00:00"}–${a.until ?? "23:59"}`);
+  return parts.join(" · ");
+}
 
 
 export type PublicMenuSnapshot = {
