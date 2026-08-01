@@ -177,7 +177,74 @@ export const LoyaltyProgramInputSchema = z.object({
 
 export type LoyaltyProgramInput = z.infer<typeof LoyaltyProgramInputSchema>;
 
+/* ------------------------------ Marketing engine ----------------------------- */
+
+export const PromoTypeSchema = z.enum([
+  "percent",
+  "fixed",
+  "buy_x_get_y",
+  "free_item",
+  "free_delivery",
+  "bundle",
+  "order_value",
+]);
+
+export const PromotionItemInputSchema = z.object({
+  menuItemId: z.string().uuid(),
+  quantity: z.number().int().min(1).max(20).default(1),
+  role: z.enum(["bundle", "buy", "get"]).default("bundle"),
+});
+
+export const PromotionInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(2).max(120),
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(120)
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and dashes only"),
+  promoType: PromoTypeSchema.default("percent"),
+  headline: z.string().trim().max(160).default(""),
+  description: z.string().trim().max(600).default(""),
+  imageKey: z.string().trim().max(500).default(""),
+  badgeLabel: z.string().trim().max(60).default(""),
+  targetScope: z.enum(["store", "category", "product", "variant"]).default("store"),
+  targetCategoryIds: z.array(z.string().uuid()).max(50).default([]),
+  targetMenuItemIds: z.array(z.string().uuid()).max(200).default([]),
+  targetVariantIds: z.array(z.string().uuid()).max(200).default([]),
+  discountValue: z.number().min(0).max(1_000_000).default(0),
+  minOrderAmount: z.number().min(0).max(1_000_000).default(0),
+  buyQuantity: z.number().int().min(0).max(50).default(0),
+  getQuantity: z.number().int().min(0).max(50).default(0),
+  getMenuItemId: z.string().uuid().nullable().optional(),
+  getDiscountPercent: z.number().min(0).max(100).default(0),
+  bundlePrice: z.number().min(0).max(1_000_000).nullable().optional(),
+  freeDelivery: z.boolean().default(false),
+  startsAt: z.string().nullable().optional(),
+  endsAt: z.string().nullable().optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+  usageLimit: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  perCustomerLimit: z.number().int().min(1).max(999).nullable().optional(),
+  stockLimit: z.number().int().min(1).max(1_000_000).nullable().optional(),
+  campaign: z.string().trim().max(80).default(""),
+  season: z.string().trim().max(80).default(""),
+  priority: z.number().int().min(0).max(9999).default(100),
+  stackMode: z.enum(["stackable", "exclusive"]).default("stackable"),
+  applicableCustomerIds: z.array(z.string().uuid()).max(500).default([]),
+  active: z.boolean().default(true),
+  featured: z.boolean().default(true),
+  seoTitle: z.string().trim().max(120).default(""),
+  seoDescription: z.string().trim().max(200).default(""),
+  items: z.array(PromotionItemInputSchema).max(20).default([]),
+});
+
+export type PromotionInput = z.infer<typeof PromotionInputSchema>;
+
 export const DeleteByIdSchema = z.object({ id: z.string().uuid() });
+
 
 
 export const UploadMediaSchema = z.object({

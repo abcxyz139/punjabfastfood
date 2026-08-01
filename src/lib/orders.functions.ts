@@ -3,6 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CustomerOrderInputSchema } from "./admin.schemas";
 import { isAvailableNow } from "./menu.types";
 import { evaluateLoyalty } from "./loyalty.server";
+import { applyPromotions, fetchPromotions, loadItemMeta, type EngineLine } from "./marketing.server";
+
 
 
 function round2(n: number) {
@@ -25,7 +27,7 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     const addonIds = Array.from(new Set(data.items.flatMap((i) => i.addonIds ?? [])));
 
     const [menuRes, variantsRes, addonsRes] = await Promise.all([
-      context.supabase.from("menu_items").select("id,name,price,active,in_stock,available_days,available_from,available_until").in("id", itemIds),
+      context.supabase.from("menu_items").select("id,name,price,active,in_stock,category_id,available_days,available_from,available_until").in("id", itemIds),
       variantIds.length
         ? context.supabase
             .from("menu_item_variants")
@@ -149,7 +151,68 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
       redeemedRewardId = reward.id;
     }
 
-    const total = round2(Math.max(0, subtotal - discount));
+    // ---- Marketing Engine (campaigns, bundles, buy X get Y, spend rewards) ----
+    // Evaluated entirely here: the browser never sends discount amounts.
+    const engineLines: EngineLine[] = lineItems.map((l) => ({
+      menuItemId: l.menuItemId,
+      variantId: l.variantId,
+      categoryId: menuById.get(l.menuItemId)?.category_id ?? null,
+      name: l.name,
+      unitPrice: l.unitPrice,
+      quantity: l.quantity,
+      lineTotal: l.lineTotal,
+    }));
+
+    let promoDiscount = 0;
+    let appliedPromotions: Array<{ promotionId: string; label: string; discount: number }> = [];
+    let promoFreeDelivery = false;
+    try {
+      const allPromotions = await fetchPromotions(context.supabase, { onlyActive: true });
+
+      // Per-customer redemption caps.
+      const { data: myRedemptions } = await context.supabase
+        .from("promotion_redemptions")
+        .select("promotion_id")
+        .eq("user_id", context.userId);
+      const usedByPromo = new Map<string, number>();
+      for (const r of myRedemptions ?? []) {
+        if (!r.promotion_id) continue;
+        usedByPromo.set(r.promotion_id, (usedByPromo.get(r.promotion_id) ?? 0) + 1);
+      }
+      const promotions = allPromotions.filter(
+        (p) => p.perCustomerLimit === null || (usedByPromo.get(p.id) ?? 0) < p.perCustomerLimit,
+      );
+
+      const referenced = new Set<string>(engineLines.map((l) => l.menuItemId));
+      for (const p of promotions) {
+        if (p.getMenuItemId) referenced.add(p.getMenuItemId);
+        for (const i of p.items) referenced.add(i.menuItemId);
+      }
+      const itemMeta = await loadItemMeta(context.supabase, Array.from(referenced));
+
+      const quote = applyPromotions({
+        promotions,
+        lines: engineLines,
+        subtotal,
+        delivery: 0,
+        itemMeta,
+        userId: context.userId,
+      });
+      // Promotions apply to what is left after a redeemed loyalty reward.
+      promoDiscount = round2(Math.min(quote.promoDiscount, Math.max(0, subtotal - discount)));
+      promoFreeDelivery = quote.freeDelivery;
+      appliedPromotions = quote.applied.map((a) => ({
+        promotionId: a.promotionId,
+        label: a.label,
+        discount: a.discount,
+      }));
+    } catch {
+      promoDiscount = 0;
+      appliedPromotions = [];
+    }
+
+    const totalDiscount = round2(discount + promoDiscount);
+    const total = round2(Math.max(0, subtotal - totalDiscount));
 
     const { data: order, error } = await context.supabase
       .from("orders")
@@ -159,12 +222,13 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
         customer_phone: data.customerPhone,
         items: lineItems,
         subtotal,
-        discount,
+        discount: totalDiscount,
         total,
         notes: data.notes ?? null,
       })
       .select("id,total,status,created_at")
       .single();
+
 
     if (error) throw new Error(error.message);
 
@@ -176,6 +240,35 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
         .update({ status: "redeemed", redeemed_order_id: order.id })
         .eq("id", redeemedRewardId)
         .eq("user_id", context.userId);
+    }
+
+    // Campaign bookkeeping: redemption records + usage counters (admin rights only).
+    if (appliedPromotions.length > 0) {
+      try {
+        await supabaseAdmin.from("promotion_redemptions").insert(
+          appliedPromotions.map((a) => ({
+            promotion_id: a.promotionId,
+            order_id: order.id,
+            user_id: context.userId,
+            customer_phone: data.customerPhone,
+            discount_amount: a.discount,
+            label: a.label,
+          })),
+        );
+        for (const a of appliedPromotions) {
+          const { data: current } = await supabaseAdmin
+            .from("promotions")
+            .select("usage_count")
+            .eq("id", a.promotionId)
+            .maybeSingle();
+          await supabaseAdmin
+            .from("promotions")
+            .update({ usage_count: Number(current?.usage_count ?? 0) + 1 })
+            .eq("id", a.promotionId);
+        }
+      } catch {
+        // Analytics must never block a customer's order.
+      }
     }
 
     let unlocked: unknown[] = [];
@@ -193,9 +286,14 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     return {
       id: order.id,
       total: Number(order.total),
-      discount,
+      discount: totalDiscount,
+      loyaltyDiscount: discount,
+      promoDiscount,
+      freeDelivery: promoFreeDelivery,
+      appliedPromotions,
       status: order.status,
       createdAt: order.created_at,
+
       unlockedRewards: unlocked.length,
     };
   });

@@ -1,0 +1,360 @@
+import { createServerFn } from "@tanstack/react-start";
+import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
+import {
+  applyPromotions,
+  badgeMap,
+  fetchPromotions,
+  loadItemMeta,
+  loadMarketingAnalytics,
+  type EngineLine,
+} from "./marketing.server";
+import type { CartQuote, Promotion, StorefrontMarketing } from "./marketing.types";
+import { promotionRunning } from "./marketing.types";
+import { requireAdmin } from "./admin.server";
+import { PromotionInputSchema } from "./admin.schemas";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+function publicClient() {
+  return createClient<Database>(process.env["SUPABASE_URL"]!, process.env["SUPABASE_PUBLISHABLE_KEY"]!, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+}
+
+const CartLineSchema = z.object({
+  menuItemId: z.string().uuid(),
+  variantId: z.string().uuid().nullable().optional(),
+  addonIds: z.array(z.string().uuid()).max(20).default([]),
+  quantity: z.number().int().min(1).max(50).default(1),
+});
+
+/* ------------------------------ Storefront ------------------------------ */
+
+/** Active campaigns + per-product badges for the menu, offers strip and popup. */
+export const getStorefrontMarketing = createServerFn({ method: "GET" }).handler(
+  async (): Promise<StorefrontMarketing> => {
+    const supabase = publicClient();
+    const promotions = (await fetchPromotions(supabase, { onlyActive: true })).filter((p) =>
+      promotionRunning(p),
+    );
+
+    const referenced = new Set<string>();
+    for (const p of promotions) {
+      if (p.getMenuItemId) referenced.add(p.getMenuItemId);
+      for (const i of p.items) referenced.add(i.menuItemId);
+      for (const i of p.targetMenuItemIds) referenced.add(i);
+    }
+
+    const [itemsRes, variantsRes, metaMap] = await Promise.all([
+      supabase.from("menu_items").select("id,name,category_id").eq("active", true),
+      supabase.from("menu_item_variants").select("id,menu_item_id"),
+      loadItemMeta(supabase, Array.from(referenced)),
+    ]);
+    if (itemsRes.error) throw new Error(itemsRes.error.message);
+    if (variantsRes.error) throw new Error(variantsRes.error.message);
+
+    const itemNames: Record<string, string> = {};
+    for (const [id, m] of metaMap.entries()) itemNames[id] = m.name;
+    for (const r of itemsRes.data ?? []) itemNames[r.id] = r.name;
+
+    const variantsByItem = new Map<string, string[]>();
+    for (const v of variantsRes.data ?? []) {
+      variantsByItem.set(v.menu_item_id, [...(variantsByItem.get(v.menu_item_id) ?? []), v.id]);
+    }
+
+    const badges = badgeMap(
+      promotions,
+      (itemsRes.data ?? []).map((r) => ({
+        id: r.id,
+        categoryId: r.category_id,
+        variantIds: variantsByItem.get(r.id) ?? [],
+      })),
+      itemNames,
+    );
+
+    return { promotions, badges, itemNames };
+  },
+);
+
+/**
+ * Authoritative cart pricing. The browser only sends ids and quantities;
+ * every price, discount and reward is computed here.
+ */
+export const quoteCart = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        items: z.array(CartLineSchema).max(30).default([]),
+        userId: z.string().uuid().nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<CartQuote> => {
+    const supabase = publicClient();
+    const settingsRes = await supabase
+      .from("business_settings")
+      .select("delivery_charges")
+      .eq("id", "default")
+      .maybeSingle();
+    const delivery = Number(settingsRes.data?.delivery_charges ?? 0);
+
+    if (data.items.length === 0) {
+      return {
+        subtotal: 0,
+        promoDiscount: 0,
+        delivery: 0,
+        freeDelivery: false,
+        total: 0,
+        applied: [],
+        suggestions: [],
+      };
+    }
+
+    const { lines, subtotal } = await buildLines(supabase, data.items);
+    const promotions = await fetchPromotions(supabase, { onlyActive: true });
+    const referenced = new Set<string>(lines.map((l) => l.menuItemId));
+    for (const p of promotions) {
+      if (p.getMenuItemId) referenced.add(p.getMenuItemId);
+      for (const i of p.items) referenced.add(i.menuItemId);
+    }
+    const itemMeta = await loadItemMeta(supabase, Array.from(referenced));
+
+    return applyPromotions({
+      promotions,
+      lines,
+      subtotal,
+      delivery,
+      itemMeta,
+      userId: data.userId ?? null,
+    });
+  });
+
+/** Shared line builder used by cart quotes (server-side prices only). */
+export async function buildLines(
+  supabase: ReturnType<typeof publicClient>,
+  items: Array<z.infer<typeof CartLineSchema>>,
+) {
+  const itemIds = Array.from(new Set(items.map((i) => i.menuItemId)));
+  const variantIds = Array.from(
+    new Set(items.map((i) => i.variantId).filter((v): v is string => Boolean(v))),
+  );
+  const addonIds = Array.from(new Set(items.flatMap((i) => i.addonIds ?? [])));
+
+  const [menuRes, variantRes, addonRes] = await Promise.all([
+    supabase.from("menu_items").select("id,name,price,category_id").in("id", itemIds),
+    variantIds.length
+      ? supabase.from("menu_item_variants").select("id,menu_item_id,price").in("id", variantIds)
+      : Promise.resolve({ data: [], error: null } as const),
+    addonIds.length
+      ? supabase.from("menu_item_addons").select("id,menu_item_id,price").in("id", addonIds)
+      : Promise.resolve({ data: [], error: null } as const),
+  ]);
+  if (menuRes.error) throw new Error(menuRes.error.message);
+  if (variantRes.error) throw new Error(variantRes.error.message);
+  if (addonRes.error) throw new Error(addonRes.error.message);
+
+  const menuById = new Map((menuRes.data ?? []).map((r) => [r.id, r]));
+  const variantById = new Map((variantRes.data ?? []).map((r) => [r.id, r]));
+  const addonById = new Map((addonRes.data ?? []).map((r) => [r.id, r]));
+
+  const lines: EngineLine[] = [];
+  for (const it of items) {
+    const row = menuById.get(it.menuItemId);
+    if (!row) continue;
+    let unitPrice = Number(row.price);
+    if (it.variantId) {
+      const v = variantById.get(it.variantId);
+      if (v) unitPrice = Number(v.price);
+    }
+    for (const aid of it.addonIds ?? []) {
+      const a = addonById.get(aid);
+      if (a) unitPrice += Number(a.price);
+    }
+    lines.push({
+      menuItemId: row.id,
+      variantId: it.variantId ?? null,
+      categoryId: row.category_id,
+      name: row.name,
+      unitPrice: Math.round(unitPrice * 100) / 100,
+      quantity: it.quantity,
+      lineTotal: Math.round(unitPrice * it.quantity * 100) / 100,
+    });
+  }
+
+  const subtotal = Math.round(lines.reduce((s, l) => s + l.lineTotal, 0) * 100) / 100;
+  return { lines, subtotal };
+}
+
+/** Single campaign page (SEO landing) — public, read only. */
+export const getPromotionBySlug = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => z.object({ slug: z.string().min(1).max(120) }).parse(input))
+  .handler(async ({ data }) => {
+    const supabase = publicClient();
+    const promotions = await fetchPromotions(supabase, { onlyActive: true });
+    const promotion = promotions.find((p) => p.slug === data.slug) ?? null;
+    type PromoPageItem = { id: string; name: string; description: string; price: number; imageKey: string };
+    if (!promotion) {
+      return {
+        promotion: null as Promotion | null,
+        items: [] as PromoPageItem[],
+        itemNames: {} as Record<string, string>,
+      };
+    }
+
+    const ids = new Set<string>([...promotion.targetMenuItemIds, ...promotion.items.map((i) => i.menuItemId)]);
+    if (promotion.getMenuItemId) ids.add(promotion.getMenuItemId);
+
+    const { data: rows } = await supabase
+      .from("menu_items")
+      .select("id,name,description,price,image_key")
+      .eq("active", true)
+      .in("id", Array.from(ids.size ? ids : new Set(["00000000-0000-0000-0000-000000000000"])));
+
+    const itemNames: Record<string, string> = {};
+    for (const r of rows ?? []) itemNames[r.id] = r.name;
+
+    return {
+      promotion: promotion as Promotion | null,
+      items: (rows ?? []).map((r): PromoPageItem => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        price: Number(r.price),
+        imageKey: r.image_key,
+      })),
+      itemNames,
+    };
+  });
+
+/* -------------------------------- Admin -------------------------------- */
+
+async function adminSnapshot(supabase: Parameters<typeof fetchPromotions>[0]) {
+  const promotions = await fetchPromotions(supabase);
+  const analytics = await loadMarketingAnalytics(supabase, promotions);
+  return { promotions, analytics };
+}
+
+export const getMarketingAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    return adminSnapshot(context.supabase);
+  });
+
+export const upsertPromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => PromotionInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+
+    const payload = {
+      name: data.name,
+      slug: data.slug,
+      promo_type: data.promoType,
+      headline: data.headline,
+      description: data.description,
+      image_key: data.imageKey,
+      badge_label: data.badgeLabel,
+      target_scope: data.targetScope,
+      target_category_ids: data.targetCategoryIds,
+      target_menu_item_ids: data.targetMenuItemIds,
+      target_variant_ids: data.targetVariantIds,
+      discount_value: data.discountValue,
+      min_order_amount: data.minOrderAmount,
+      buy_quantity: data.buyQuantity,
+      get_quantity: data.getQuantity,
+      get_menu_item_id: data.getMenuItemId ?? null,
+      get_discount_percent: data.getDiscountPercent,
+      bundle_price: data.bundlePrice ?? null,
+      free_delivery: data.freeDelivery,
+      starts_at: data.startsAt ?? null,
+      ends_at: data.endsAt ?? null,
+      start_time: data.startTime ?? null,
+      end_time: data.endTime ?? null,
+      days_of_week: data.daysOfWeek,
+      usage_limit: data.usageLimit ?? null,
+      per_customer_limit: data.perCustomerLimit ?? null,
+      stock_limit: data.stockLimit ?? null,
+      campaign: data.campaign,
+      season: data.season,
+      priority: data.priority,
+      stack_mode: data.stackMode,
+      applicable_customer_ids: data.applicableCustomerIds,
+      active: data.active,
+      featured: data.featured,
+      seo_title: data.seoTitle,
+      seo_description: data.seoDescription,
+    };
+
+    let promotionId = data.id ?? null;
+    if (promotionId) {
+      const { error } = await context.supabase.from("promotions").update(payload).eq("id", promotionId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { data: inserted, error } = await context.supabase
+        .from("promotions")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      promotionId = inserted.id;
+    }
+
+    // Bundle / buy / get composition is replaced wholesale on every save.
+    const del = await context.supabase.from("promotion_items").delete().eq("promotion_id", promotionId);
+    if (del.error) throw new Error(del.error.message);
+    if (data.items.length > 0) {
+      const { error } = await context.supabase.from("promotion_items").insert(
+        data.items.map((i) => ({
+          promotion_id: promotionId,
+          menu_item_id: i.menuItemId,
+          quantity: i.quantity,
+          role: i.role,
+        })),
+      );
+      if (error) throw new Error(error.message);
+    }
+
+    return adminSnapshot(context.supabase);
+  });
+
+export const deletePromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.from("promotions").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return adminSnapshot(context.supabase);
+  });
+
+/** Dry-run a campaign against a sample cart so the owner can sanity check rules. */
+export const previewPromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ promotionId: z.string().uuid(), items: z.array(CartLineSchema).min(1).max(20) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const promotions = await fetchPromotions(context.supabase);
+    const promotion = promotions.find((p) => p.id === data.promotionId);
+    if (!promotion) throw new Error("Campaign not found.");
+
+    const supabase = context.supabase as unknown as ReturnType<typeof publicClient>;
+    const { lines, subtotal } = await buildLines(supabase, data.items);
+    const referenced = new Set<string>(lines.map((l) => l.menuItemId));
+    if (promotion.getMenuItemId) referenced.add(promotion.getMenuItemId);
+    for (const i of promotion.items) referenced.add(i.menuItemId);
+    const itemMeta = await loadItemMeta(context.supabase, Array.from(referenced));
+
+    const quote = applyPromotions({
+      promotions: [{ ...promotion, active: true } as Promotion],
+      lines,
+      subtotal,
+      delivery: 0,
+      itemMeta,
+      userId: context.userId,
+    });
+    return { quote, running: promotionRunning(promotion) };
+  });

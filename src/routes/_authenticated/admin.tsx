@@ -183,7 +183,7 @@ function AdminPage() {
 
             <Tabs defaultValue="dashboard" className="w-full">
               <TabsList className="bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
-                {["dashboard", "menu", "categories", "hero", "offers", "gallery", "testimonials", "loyalty", "orders", "settings"].map((t) => (
+                {["dashboard", "menu", "categories", "hero", "offers", "marketing", "gallery", "testimonials", "loyalty", "orders", "settings"].map((t) => (
                   <TabsTrigger key={t} value={t} className="capitalize text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
                     {t}
                   </TabsTrigger>
