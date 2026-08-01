@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Flame, Star, ShoppingBag, Plus, MapPin, Phone, Mail, Instagram, Facebook, MessageCircle, ChevronRight, Clock, Sparkles, Loader2, X, Check, Minus, Settings2, Trash2, Search } from "lucide-react";
+import { toast } from "sonner";
 import { recommendDishes } from "@/lib/recommend.functions";
 import { getPublicMenu, getPublicSettings } from "@/lib/menu.functions";
 import { createCustomerOrder } from "@/lib/orders.functions";
@@ -614,7 +615,7 @@ function Menu() {
       {!isLoading && !error && filtered.length > 0 && (
         <motion.div
           layout
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
         >
           <AnimatePresence mode="popLayout">
             {filtered.map((item, i) => (
@@ -685,7 +686,7 @@ function MenuCard({
     ? `From ${formatPrice(Math.min(...item.variants.map((v) => v.price)))}`
     : formatPrice(item.price);
 
-
+  /** One-tap add for drinks, desserts and anything else with no required choices. */
   const handleQuickAdd = () => {
     addEntry({
       menuItemId: item.id,
@@ -697,18 +698,19 @@ function MenuCard({
       unitPrice: item.price,
       quantity: 1,
     });
+    toast.success(`${item.name} added`, { description: formatPrice(item.price), duration: 1600 });
   };
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.6, delay: (index % 4) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={servable ? { y: -6 } : undefined}
-      className={`group bg-white p-6 transition-colors duration-500 relative ${servable ? "hover:bg-brand-gold" : ""}`}
+      exit={{ opacity: 0, scale: 0.95 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.35, delay: (index % 4) * 0.04, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={servable ? { y: -4 } : undefined}
+      className={`group bg-white p-3 sm:p-6 transition-colors duration-300 relative flex flex-col ${servable ? "sm:hover:bg-brand-gold" : ""}`}
     >
       <div className="absolute top-4 left-4 z-10">
         <FavoriteButton menuItemId={item.id} name={item.name} />
@@ -721,7 +723,7 @@ function MenuCard({
               {item.tag}
             </span>
           )}
-          {item.badges.slice(0, 3).map((b) => (
+          {item.badges.slice(0, 2).map((b) => (
             <span key={b} className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${BADGE_STYLE[b] ?? "bg-brand-black text-white"}`}>
               {b}
             </span>
@@ -732,33 +734,36 @@ function MenuCard({
         type="button"
         onClick={servable ? onOpenOptions : undefined}
         disabled={!servable}
-        aria-label={`View details for ${item.name}`}
+        aria-label={`View details for ${item.name}, ${priceLabel}`}
         className="block w-full text-left disabled:cursor-not-allowed"
       >
-      <div className="aspect-square mb-6 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
-        <img
-          src={resolveImg(item.imageKey)}
-          alt={item.name}
-          loading="lazy"
-          width={640}
-          height={640}
-          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${servable ? "group-hover:scale-110" : "grayscale opacity-60"}`}
-        />
-        {!servable && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5">
-              {item.inStock ? "Not Serving Now" : "Sold Out"}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="flex justify-between items-start mb-2 gap-3">
-        <h3 className="font-display text-2xl uppercase leading-none">{item.name}</h3>
-        <span className="font-mono text-sm font-bold whitespace-nowrap">{priceLabel}</span>
-      </div>
+        {/* Image first: photos sell food. */}
+        <div className="aspect-square mb-3 sm:mb-5 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
+          <img
+            src={resolveImg(item.imageKey)}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            width={640}
+            height={640}
+            className={`w-full h-full object-cover transition-transform duration-500 ease-out ${servable ? "sm:group-hover:scale-105" : "grayscale opacity-60"}`}
+          />
+          {!servable && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 text-center">
+                {item.inStock ? "Not Serving Now" : "Sold Out"}
+              </span>
+            </div>
+          )}
+        </div>
+        {/* Price is the second thing a customer looks at, so it leads the text block. */}
+        <div className="font-mono text-lg sm:text-xl font-bold leading-none mb-1">{priceLabel}</div>
+        <h3 className="font-display text-lg sm:text-2xl uppercase leading-none line-clamp-2">{item.name}</h3>
       </button>
-      <p className="text-xs text-brand-black/60 leading-relaxed mb-3">{item.description}</p>
-      <div className="flex items-center gap-3 mb-4 min-h-4">
+      {item.description && (
+        <p className="hidden sm:block text-xs text-brand-black/60 leading-relaxed mt-2 line-clamp-1">{item.description}</p>
+      )}
+      <div className="flex items-center gap-2 mt-2 mb-3">
         {item.spiceLevel > 0 && (
           <span className="flex items-center gap-0.5" title={`Spice level ${item.spiceLevel} of 3`}>
             {Array.from({ length: item.spiceLevel }).map((_, i) => (
@@ -772,33 +777,34 @@ function MenuCard({
           </span>
         )}
       </div>
-      {!servable ? (
-        <button
-          disabled
-          className="w-full py-3 bg-brand-black/10 text-brand-black/45 text-[10px] font-bold uppercase tracking-widest cursor-not-allowed"
-        >
-          {ctaLabel}
-        </button>
-      ) : needsOptions ? (
-        <button
-          onClick={onOpenOptions}
-          className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
-        >
-          <Settings2 className="size-3" /> {ctaLabel}
-        </button>
-      ) : (
-        <button
-          onClick={handleQuickAdd}
-          className="w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="size-3" /> {ctaLabel}
-        </button>
-      )}
+      <div className="mt-auto">
+        {!servable ? (
+          <button
+            disabled
+            className="w-full min-h-12 bg-brand-black/10 text-brand-black/45 text-[11px] font-bold uppercase tracking-widest cursor-not-allowed px-2"
+          >
+            {ctaLabel}
+          </button>
+        ) : needsOptions ? (
+          <button
+            onClick={onOpenOptions}
+            className="w-full min-h-12 bg-brand-black text-white text-[11px] font-bold uppercase tracking-widest sm:group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Settings2 className="size-4" /> {item.productType === "combo" ? "Order Deal" : "Choose"}
+          </button>
+        ) : (
+          <button
+            onClick={handleQuickAdd}
+            className="w-full min-h-12 bg-brand-black text-white text-[11px] font-bold uppercase tracking-widest sm:group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Plus className="size-4" /> Add
+          </button>
+        )}
+      </div>
     </motion.div>
-
-
   );
 }
+
 
 type UpsellItem = { item: PublicMenuItem; onPick: () => void };
 
@@ -988,6 +994,7 @@ function OptionsModal({
         });
       }
     }
+    toast.success(`${displayName} added`, { description: formatPrice(unitPrice * qty), duration: 1600 });
     onClose();
   };
 
@@ -1864,28 +1871,35 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   const count = cart.reduce((s, c) => s + c.quantity, 0);
+  // Display-only estimate; the server still recalculates every total at checkout.
+  const estimate = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3">
+    <div className="fixed bottom-5 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-40 flex items-end justify-end gap-3">
       <a
         href={buildWaUrl(settings.whatsappNumber, `Hi ${settings.restaurantName}, I'd like to place an order.`)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="size-14 rounded-full bg-green-600 hover:bg-green-500 text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
+        className="size-14 shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
       >
         <MessageCircle className="size-6" />
       </a>
 
       <button
         onClick={onOpenCart}
-        aria-label="Open cart"
-        className="relative size-14 rounded-full bg-brand-red hover:bg-brand-orange text-white grid place-items-center shadow-2xl active:scale-95 transition-all"
+        aria-label={count > 0 ? `Open cart, ${count} items, ${formatPrice(estimate)}` : "Open cart"}
+        className={`relative min-h-14 rounded-full bg-brand-red hover:bg-brand-orange text-white shadow-2xl active:scale-95 transition-all ${count > 0 ? "flex-1 sm:flex-none px-5 flex items-center justify-between gap-4" : "size-14 grid place-items-center"}`}
       >
-        <ShoppingBag className="size-6" />
-        {count > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-6 h-6 px-1.5 grid place-items-center bg-brand-gold text-brand-black font-mono text-xs font-bold rounded-full">
-            {count}
-          </span>
+        {count > 0 ? (
+          <>
+            <span className="flex items-center gap-2 font-bold uppercase tracking-tight text-sm">
+              <ShoppingBag className="size-5" />
+              {count} {count === 1 ? "item" : "items"}
+            </span>
+            <span className="font-mono text-sm font-bold">{formatPrice(estimate)}</span>
+          </>
+        ) : (
+          <ShoppingBag className="size-6" />
         )}
       </button>
     </div>
@@ -2094,10 +2108,10 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
                   <div className="pt-4 mt-4 border-t border-brand-black/10 space-y-3">
                     <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/50">Delivery Details</div>
-                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
-                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone Number *" type="tel" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
-                    <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery Address *" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors resize-none" />
-                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors resize-none" />
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" autoComplete="name" className="w-full min-h-12 border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors" />
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone Number *" type="tel" inputMode="tel" autoComplete="tel" className="w-full min-h-12 border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors" />
+                    <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery Address *" rows={2} autoComplete="street-address" className="w-full border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors resize-none" />
+                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Note (optional)" rows={2} className="w-full border border-brand-black/10 px-4 py-3 text-base outline-none focus:border-brand-red transition-colors resize-none" />
                   </div>
                 </div>
               )}

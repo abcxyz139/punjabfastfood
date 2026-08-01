@@ -43,6 +43,7 @@ import type {
 import { BADGE_OPTIONS } from "@/lib/menu.types";
 import { LoyaltyTab } from "@/components/admin-loyalty";
 import { MarketingTab } from "@/components/admin-marketing";
+import { formatBytes, optimizeImageForUpload } from "@/lib/image-optimize";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -294,21 +295,24 @@ function ImageUploader({ value, onChange, setMessage }: { value: string; onChang
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setMessage({ kind: "err", text: "Max file size 10MB." });
+    if (file.size > 25 * 1024 * 1024) {
+      setMessage({ kind: "err", text: "That photo is too large. Please pick one under 25MB." });
       return;
     }
     setUploading(true);
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+      // Resize + square-crop + WebP in the browser so the owner never has to think about it.
+      const prepared = await optimizeImageForUpload(file, { maxSize: 1200, square: true, quality: 0.82 });
+      const res = await upload({
+        data: { fileName: prepared.fileName, contentType: prepared.contentType, base64: prepared.base64 },
       });
-      const res = await upload({ data: { fileName: file.name, contentType: file.type || "image/jpeg", base64 } });
       onChange(res.url);
-      setMessage({ kind: "ok", text: "Image uploaded." });
+      setMessage({
+        kind: "ok",
+        text: prepared.optimized
+          ? `Photo uploaded and optimised (${formatBytes(file.size)} → ${formatBytes(prepared.bytes)}).`
+          : "Photo uploaded.",
+      });
     } catch (err) {
       setMessage({ kind: "err", text: err instanceof Error ? err.message : "Upload failed." });
     } finally {
@@ -319,24 +323,46 @@ function ImageUploader({ value, onChange, setMessage }: { value: string; onChang
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2">
-        <TextInput value={value} onChange={(e) => onChange(e.target.value)} placeholder="Image URL or upload" />
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="px-3 border border-brand-black/10 hover:border-brand-red text-xs font-bold uppercase inline-flex items-center gap-1 disabled:opacity-50"
-        >
-          {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Upload
-        </button>
-        <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-      </div>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="w-full min-h-14 border-2 border-dashed border-brand-black/20 hover:border-brand-red p-4 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-tighter disabled:opacity-50"
+      >
+        {uploading ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}
+        {uploading ? "Uploading photo…" : value ? "Change photo" : "Upload photo from phone"}
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
       {value && value.startsWith("http") && (
-        <img src={value} alt="preview" className="h-20 w-20 object-cover border border-brand-black/10" />
+        <img src={value} alt="preview" className="h-28 w-28 object-cover border border-brand-black/10" />
       )}
+      <details>
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-brand-black/40">
+          Or paste an image link
+        </summary>
+        <div className="mt-2">
+          <TextInput value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://…" />
+        </div>
+      </details>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-brand-black/35">
+        Photos are compressed, cropped square and saved as WebP automatically.
+      </p>
     </div>
   );
 }
+
+/** Collapsible block that keeps rarely-used settings out of the owner's way. */
+function Advanced({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details className="border border-brand-black/10">
+      <summary className="cursor-pointer px-3 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-black/60 select-none">
+        {title}
+      </summary>
+      <div className="px-3 pb-4 pt-1 space-y-3">{children}</div>
+    </details>
+  );
+}
+
 
 async function runAction<T>(
   fn: () => Promise<Snapshot>,
@@ -527,26 +553,34 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
               <h3 className="font-display text-2xl uppercase tracking-tighter">{editing.id ? "Edit Item" : "New Item"}</h3>
               <button type="button" onClick={() => setEditing({})}><X className="size-5" /></button>
             </div>
-            <Field label="Name"><TextInput value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required /></Field>
-            <Field label="Category">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40">
+              Step 1 photo · Step 2 name · Step 3 category · Step 4 price · Save
+            </p>
+            <Field label="1. Product photo"><ImageUploader value={editing.imageKey ?? ""} onChange={(v) => setEditing({ ...editing, imageKey: v })} setMessage={setMessage} /></Field>
+            <Field label="2. Product name"><TextInput value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required /></Field>
+            <Field label="3. Category">
               <select value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="w-full border border-brand-black/10 p-3 text-sm">
                 {snapshot.categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </Field>
-            <Field label="Description"><TextArea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={3} required /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Price"><TextInput type="number" step="0.01" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
-              <Field label="Order"><TextInput type="number" value={String(editing.displayOrder ?? 100)} onChange={(e) => setEditing({ ...editing, displayOrder: Number(e.target.value) })} /></Field>
-            </div>
-            <Field label="Image"><ImageUploader value={editing.imageKey ?? ""} onChange={(v) => setEditing({ ...editing, imageKey: v })} setMessage={setMessage} /></Field>
-            <Field label="Tag (optional)"><TextInput value={editing.tag ?? ""} onChange={(e) => setEditing({ ...editing, tag: e.target.value })} /></Field>
-            <div className="flex gap-4 text-sm font-bold">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured</label>
-            </div>
+            <Field label="4. Price"><TextInput type="number" step="0.01" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
+            <Field label="Short description (one line customers can skim)">
+              <TextArea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={2} required />
+            </Field>
+            <label className="flex items-center gap-2 text-sm font-bold">
+              <input type="checkbox" checked={!!editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Show on the website
+            </label>
 
-            <div className="border-t border-brand-black/10 pt-3 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Product behaviour</div>
+            <Advanced title="Extra display settings">
+              <Field label="Tag (optional)"><TextInput value={editing.tag ?? ""} onChange={(e) => setEditing({ ...editing, tag: e.target.value })} /></Field>
+              <Field label="Sort order"><TextInput type="number" value={String(editing.displayOrder ?? 100)} onChange={(e) => setEditing({ ...editing, displayOrder: Number(e.target.value) })} /></Field>
+              <label className="flex items-center gap-2 text-sm font-bold">
+                <input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured on the homepage
+              </label>
+            </Advanced>
+
+
+            <Advanced title="Options &amp; variants behaviour">
               <Field label="Product type">
                 <select value={editing.productType ?? "simple"} onChange={(e) => setEditing({ ...editing, productType: e.target.value as AdminMenuItem["productType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
                   <option value="simple">Simple — one price, add straight to cart</option>
@@ -566,10 +600,9 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
                   <input type="checkbox" checked={editing.variantRequired ?? true} onChange={(e) => setEditing({ ...editing, variantRequired: e.target.checked })} /> Variant required
                 </label>
               </div>
-            </div>
+            </Advanced>
 
-            <div className="border-t border-brand-black/10 pt-3 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Discovery &amp; availability</div>
+            <Advanced title="Discovery &amp; availability">
               <Field label="Badges (max 4)">
                 <div className="flex flex-wrap gap-1.5">
                   {BADGE_OPTIONS.map((b) => {
@@ -634,12 +667,12 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
                   <TextInput type="time" value={editing.availability?.until ?? ""} onChange={(e) => setEditing({ ...editing, availability: { ...(editing.availability ?? { days: [], from: null, until: null }), until: e.target.value || null } })} />
                 </Field>
               </div>
-            </div>
+            </Advanced>
 
 
 
-            <div className="border-t border-brand-black/10 pt-3 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Upsells shown in the product popup</div>
+
+            <Advanced title="Upsells shown in the product popup">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prep time in minutes (blank = hidden)">
                   <TextInput
@@ -674,7 +707,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
                 selected={editing.mealUpgradeIds ?? []}
                 onChange={(ids) => setEditing({ ...editing, mealUpgradeIds: ids })}
               />
-            </div>
+            </Advanced>
 
             <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
           </form>
