@@ -85,6 +85,16 @@ export type PublicMenuItem = {
   /** False = sold out; card shows as unavailable. */
   inStock: boolean;
   availability: Availability;
+  /** Owner-set preparation time in minutes; null hides the badge. */
+  prepTimeMinutes: number | null;
+  /** Owner-picked "You may also like" item ids. */
+  recommendedIds: string[];
+  /** Owner-picked "Frequently bought together" item ids. */
+  frequentlyBoughtIds: string[];
+  /** Owner-picked "Complete your meal" item ids added in one click. */
+  mealUpgradeIds: string[];
+  /** Label for the meal upgrade block. */
+  mealUpgradeLabel: string;
   variants: MenuVariant[];
   addons: MenuAddon[];
 };
