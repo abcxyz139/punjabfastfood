@@ -664,8 +664,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
 
 
 
-            <div className="border-t border-brand-black/10 pt-3 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Upsells shown in the product popup</div>
+            <Advanced title="Upsells shown in the product popup">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prep time in minutes (blank = hidden)">
                   <TextInput
