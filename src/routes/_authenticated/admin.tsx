@@ -294,21 +294,24 @@ function ImageUploader({ value, onChange, setMessage }: { value: string; onChang
   const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setMessage({ kind: "err", text: "Max file size 10MB." });
+    if (file.size > 25 * 1024 * 1024) {
+      setMessage({ kind: "err", text: "That photo is too large. Please pick one under 25MB." });
       return;
     }
     setUploading(true);
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+      // Resize + square-crop + WebP in the browser so the owner never has to think about it.
+      const prepared = await optimizeImageForUpload(file, { maxSize: 1200, square: true, quality: 0.82 });
+      const res = await upload({
+        data: { fileName: prepared.fileName, contentType: prepared.contentType, base64: prepared.base64 },
       });
-      const res = await upload({ data: { fileName: file.name, contentType: file.type || "image/jpeg", base64 } });
       onChange(res.url);
-      setMessage({ kind: "ok", text: "Image uploaded." });
+      setMessage({
+        kind: "ok",
+        text: prepared.optimized
+          ? `Photo uploaded and optimised (${formatBytes(file.size)} → ${formatBytes(prepared.bytes)}).`
+          : "Photo uploaded.",
+      });
     } catch (err) {
       setMessage({ kind: "err", text: err instanceof Error ? err.message : "Upload failed." });
     } finally {
@@ -319,24 +322,46 @@ function ImageUploader({ value, onChange, setMessage }: { value: string; onChang
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2">
-        <TextInput value={value} onChange={(e) => onChange(e.target.value)} placeholder="Image URL or upload" />
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="px-3 border border-brand-black/10 hover:border-brand-red text-xs font-bold uppercase inline-flex items-center gap-1 disabled:opacity-50"
-        >
-          {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Upload
-        </button>
-        <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-      </div>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="w-full min-h-14 border-2 border-dashed border-brand-black/20 hover:border-brand-red p-4 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-tighter disabled:opacity-50"
+      >
+        {uploading ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}
+        {uploading ? "Uploading photo…" : value ? "Change photo" : "Upload photo from phone"}
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
       {value && value.startsWith("http") && (
-        <img src={value} alt="preview" className="h-20 w-20 object-cover border border-brand-black/10" />
+        <img src={value} alt="preview" className="h-28 w-28 object-cover border border-brand-black/10" />
       )}
+      <details>
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-brand-black/40">
+          Or paste an image link
+        </summary>
+        <div className="mt-2">
+          <TextInput value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://…" />
+        </div>
+      </details>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-brand-black/35">
+        Photos are compressed, cropped square and saved as WebP automatically.
+      </p>
     </div>
   );
 }
+
+/** Collapsible block that keeps rarely-used settings out of the owner's way. */
+function Advanced({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <details className="border border-brand-black/10">
+      <summary className="cursor-pointer px-3 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-brand-black/60 select-none">
+        {title}
+      </summary>
+      <div className="px-3 pb-4 pt-1 space-y-3">{children}</div>
+    </details>
+  );
+}
+
 
 async function runAction<T>(
   fn: () => Promise<Snapshot>,
