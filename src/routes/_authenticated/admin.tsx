@@ -436,20 +436,34 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
   const [editing, setEditing] = useState<Partial<AdminMenuItem> & { id?: string }>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100 });
+  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null });
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!editing.name) return;
+    const common = {
+      name: editing.name!,
+      category: editing.category!,
+      description: editing.description!,
+      price: Number(editing.price),
+      imageKey: editing.imageKey || "burger",
+      tag: editing.tag || null,
+      active: !!editing.active,
+      featured: !!editing.featured,
+      displayOrder: Number(editing.displayOrder) || 100,
+      productType: editing.productType ?? "simple",
+      variantLabel: editing.variantLabel || null,
+      addonLabel: editing.addonLabel || null,
+      variantRequired: editing.variantRequired ?? true,
+      maxAddons: editing.maxAddons ?? null,
+    };
     await runAction(
-      () =>
-        editing.id
-          ? update({ data: { id: editing.id, name: editing.name!, category: editing.category!, description: editing.description!, price: Number(editing.price), imageKey: editing.imageKey || "burger", tag: editing.tag || null, active: !!editing.active, featured: !!editing.featured, displayOrder: Number(editing.displayOrder) || 100 } })
-          : create({ data: { name: editing.name!, category: editing.category!, description: editing.description!, price: Number(editing.price), imageKey: editing.imageKey || "burger", tag: editing.tag || null, active: !!editing.active, featured: !!editing.featured, displayOrder: Number(editing.displayOrder) || 100 } }),
+      () => (editing.id ? update({ data: { id: editing.id, ...common } }) : create({ data: common })),
       { refresh, setMessage, setSaving, okText: "Menu item saved." },
     );
     setEditing({});
   };
+
 
   return (
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
