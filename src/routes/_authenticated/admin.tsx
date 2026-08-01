@@ -205,6 +205,14 @@ function AdminPage() {
               <TabsContent value="offers" className="mt-6">
                 <OffersTab items={snapshot.offers} refresh={refresh} setMessage={setMessage} saving={saving} setSaving={setSaving} />
               </TabsContent>
+              <TabsContent value="marketing" className="mt-6">
+                <MarketingTab
+                  menuItems={snapshot.menuItems}
+                  categories={snapshot.categories}
+                  variants={snapshot.variants}
+                  setMessage={setMessage}
+                />
+              </TabsContent>
               <TabsContent value="gallery" className="mt-6">
                 <GalleryTab items={snapshot.gallery} refresh={refresh} setMessage={setMessage} saving={saving} setSaving={setSaving} />
               </TabsContent>
