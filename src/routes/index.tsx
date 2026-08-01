@@ -1946,7 +1946,8 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
   const delivery = cart.length > 0 ? settings.deliveryCharges : 0;
-  const total = subtotal + delivery;
+  // Reward discount shown here is indicative only — the server recalculates it authoritatively.
+  const total = Math.max(0, subtotal - rewardDiscount) + delivery;
 
   const handleOrder = async () => {
     setFormError(null);
