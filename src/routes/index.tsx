@@ -1999,6 +1999,9 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                           {e.addonNames.length > 0 && (
                             <div className="font-mono text-[10px] uppercase text-brand-black/50 mt-1">+ {e.addonNames.join(", ")}</div>
                           )}
+                          {e.notes && (
+                            <div className="text-[10px] text-brand-black/50 mt-1 italic">“{e.notes}”</div>
+                          )}
                           <div className="font-mono text-xs text-brand-black/60 mt-1">{formatPrice(e.unitPrice)} each</div>
                         </div>
                         <button onClick={() => removeCartEntry(e.key)} aria-label="Remove" className="text-brand-black/40 hover:text-brand-red">
