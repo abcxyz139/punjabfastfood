@@ -602,13 +602,15 @@ function VariantsAddonsPanel({ item, snapshot, refresh, setMessage, setSaving }:
 function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminCategory>) {
   const up = useServerFn(upsertCategory);
   const del = useServerFn(deleteCategory);
-  const [draft, setDraft] = useState({ id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true });
+  const empty = { id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true, defaultProductType: "simple" as AdminCategory["defaultProductType"], variantLabel: "Choose an option", addonLabel: "Add-ons" };
+  const [draft, setDraft] = useState(empty);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     await runAction(() => up({ data: draft }), { refresh, setMessage, setSaving, okText: "Category saved." });
-    setDraft({ id: undefined, name: "", slug: "", displayOrder: 100, active: true });
+    setDraft(empty);
   };
+
 
   return (
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
