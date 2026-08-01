@@ -1,3 +1,5 @@
+import type { ProductType } from "./menu.types";
+
 export type AdminMenuItem = {
   id: string;
   name: string;
@@ -9,7 +11,13 @@ export type AdminMenuItem = {
   active: boolean;
   featured: boolean;
   displayOrder: number;
+  productType: ProductType;
+  variantLabel: string | null;
+  addonLabel: string | null;
+  variantRequired: boolean;
+  maxAddons: number | null;
 };
+
 
 export type AdminOrder = {
   id: string;
@@ -39,7 +47,11 @@ export type AdminCategory = {
   slug: string;
   displayOrder: number;
   active: boolean;
+  defaultProductType: ProductType;
+  variantLabel: string;
+  addonLabel: string;
 };
+
 
 export type AdminVariant = {
   id: string;

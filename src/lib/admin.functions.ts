@@ -48,6 +48,11 @@ export const createMenuItem = createServerFn({ method: "POST" })
       active: data.active,
       featured: data.featured,
       display_order: data.displayOrder,
+      product_type: data.productType,
+      variant_label: data.variantLabel ?? null,
+      addon_label: data.addonLabel ?? null,
+      variant_required: data.variantRequired,
+      max_addons: data.maxAddons ?? null,
     });
     if (error) throw new Error(error.message);
     return loadAdminDashboard(context.supabase, context.userId);
@@ -70,11 +75,17 @@ export const updateMenuItem = createServerFn({ method: "POST" })
         active: data.active,
         featured: data.featured,
         display_order: data.displayOrder,
+        product_type: data.productType,
+        variant_label: data.variantLabel ?? null,
+        addon_label: data.addonLabel ?? null,
+        variant_required: data.variantRequired,
+        max_addons: data.maxAddons ?? null,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return loadAdminDashboard(context.supabase, context.userId);
   });
+
 
 export const deleteMenuItem = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -125,7 +136,11 @@ export const upsertCategory = createServerFn({ method: "POST" })
       slug: data.slug,
       display_order: data.displayOrder,
       active: data.active,
+      default_product_type: data.defaultProductType,
+      variant_label: data.variantLabel,
+      addon_label: data.addonLabel,
     };
+
     const q = data.id
       ? context.supabase.from("categories").update(payload).eq("id", data.id)
       : context.supabase.from("categories").insert(payload);

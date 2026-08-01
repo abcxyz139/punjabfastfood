@@ -68,30 +68,39 @@ export type Database = {
       categories: {
         Row: {
           active: boolean
+          addon_label: string
           created_at: string
+          default_product_type: string
           display_order: number
           id: string
           name: string
           slug: string
           updated_at: string
+          variant_label: string
         }
         Insert: {
           active?: boolean
+          addon_label?: string
           created_at?: string
+          default_product_type?: string
           display_order?: number
           id?: string
           name: string
           slug: string
           updated_at?: string
+          variant_label?: string
         }
         Update: {
           active?: boolean
+          addon_label?: string
           created_at?: string
+          default_product_type?: string
           display_order?: number
           id?: string
           name?: string
           slug?: string
           updated_at?: string
+          variant_label?: string
         }
         Relationships: []
       }
@@ -243,6 +252,7 @@ export type Database = {
       menu_items: {
         Row: {
           active: boolean
+          addon_label: string | null
           category: string
           category_id: string | null
           created_at: string
@@ -251,13 +261,18 @@ export type Database = {
           featured: boolean
           id: string
           image_key: string
+          max_addons: number | null
           name: string
           price: number
+          product_type: string
           tag: string | null
           updated_at: string
+          variant_label: string | null
+          variant_required: boolean
         }
         Insert: {
           active?: boolean
+          addon_label?: string | null
           category: string
           category_id?: string | null
           created_at?: string
@@ -266,13 +281,18 @@ export type Database = {
           featured?: boolean
           id?: string
           image_key?: string
+          max_addons?: number | null
           name: string
           price: number
+          product_type?: string
           tag?: string | null
           updated_at?: string
+          variant_label?: string | null
+          variant_required?: boolean
         }
         Update: {
           active?: boolean
+          addon_label?: string | null
           category?: string
           category_id?: string | null
           created_at?: string
@@ -281,10 +301,14 @@ export type Database = {
           featured?: boolean
           id?: string
           image_key?: string
+          max_addons?: number | null
           name?: string
           price?: number
+          product_type?: string
           tag?: string | null
           updated_at?: string
+          variant_label?: string | null
+          variant_required?: boolean
         }
         Relationships: [
           {
