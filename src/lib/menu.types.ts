@@ -137,4 +137,6 @@ export type CartEntry = {
   addonNames: string[];
   unitPrice: number;
   quantity: number;
+  /** Optional customer instructions, e.g. "extra spicy, no onion". */
+  notes?: string | null;
 };
