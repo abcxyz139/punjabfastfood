@@ -436,7 +436,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
   const [editing, setEditing] = useState<Partial<AdminMenuItem> & { id?: string }>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null });
+  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null, badges: [], searchKeywords: [], spiceLevel: 0, inStock: true, availability: { days: [], from: null, until: null } });
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
