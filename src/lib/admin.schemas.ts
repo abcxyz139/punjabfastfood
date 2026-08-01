@@ -18,7 +18,15 @@ export const MenuItemInputSchema = z.object({
   addonLabel: z.string().trim().max(60).nullable().optional(),
   variantRequired: z.boolean().default(true),
   maxAddons: z.number().int().min(0).max(50).nullable().optional(),
+  badges: z.array(z.string().trim().min(1).max(30)).max(4).default([]),
+  searchKeywords: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+  spiceLevel: z.number().int().min(0).max(3).default(0),
+  inStock: z.boolean().default(true),
+  availableDays: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+  availableFrom: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  availableUntil: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
 });
+
 
 
 export const OrderStatusInputSchema = z.object({
