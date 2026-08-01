@@ -438,7 +438,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
   const [editing, setEditing] = useState<Partial<AdminMenuItem> & { id?: string }>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null, badges: [], searchKeywords: [], spiceLevel: 0, inStock: true, availability: { days: [], from: null, until: null } });
+  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null, badges: [], searchKeywords: [], spiceLevel: 0, inStock: true, availability: { days: [], from: null, until: null }, prepTimeMinutes: null, recommendedIds: [], frequentlyBoughtIds: [], mealUpgradeIds: [], mealUpgradeLabel: "Complete your meal" });
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
@@ -465,6 +465,11 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
       availableDays: editing.availability?.days ?? [],
       availableFrom: editing.availability?.from || null,
       availableUntil: editing.availability?.until || null,
+      prepTimeMinutes: editing.prepTimeMinutes ?? null,
+      recommendedIds: editing.recommendedIds ?? [],
+      frequentlyBoughtIds: editing.frequentlyBoughtIds ?? [],
+      mealUpgradeIds: editing.mealUpgradeIds ?? [],
+      mealUpgradeLabel: editing.mealUpgradeLabel || "Complete your meal",
     };
 
     await runAction(
@@ -620,6 +625,44 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
 
 
 
+            <div className="border-t border-brand-black/10 pt-3 space-y-3">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Upsells shown in the product popup</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Prep time in minutes (blank = hidden)">
+                  <TextInput
+                    type="number"
+                    min="0"
+                    value={editing.prepTimeMinutes === null || editing.prepTimeMinutes === undefined ? "" : String(editing.prepTimeMinutes)}
+                    onChange={(e) => setEditing({ ...editing, prepTimeMinutes: e.target.value === "" ? null : Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Meal upgrade label">
+                  <TextInput placeholder="Complete your meal" value={editing.mealUpgradeLabel ?? ""} onChange={(e) => setEditing({ ...editing, mealUpgradeLabel: e.target.value })} />
+                </Field>
+              </div>
+              <ItemPicker
+                label="Recommended products (You may also like)"
+                items={snapshot.menuItems}
+                excludeId={editing.id}
+                selected={editing.recommendedIds ?? []}
+                onChange={(ids) => setEditing({ ...editing, recommendedIds: ids })}
+              />
+              <ItemPicker
+                label="Frequently bought together"
+                items={snapshot.menuItems}
+                excludeId={editing.id}
+                selected={editing.frequentlyBoughtIds ?? []}
+                onChange={(ids) => setEditing({ ...editing, frequentlyBoughtIds: ids })}
+              />
+              <ItemPicker
+                label="Complete your meal (added in one click)"
+                items={snapshot.menuItems}
+                excludeId={editing.id}
+                selected={editing.mealUpgradeIds ?? []}
+                onChange={(ids) => setEditing({ ...editing, mealUpgradeIds: ids })}
+              />
+            </div>
+
             <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
           </form>
         </Card>
@@ -627,6 +670,42 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
         <Card><p className="text-brand-black/50 text-sm">Select an item to edit, or click New Item.</p></Card>
       )}
     </div>
+  );
+}
+
+/** Multi-select list of menu items used for the popup upsell settings. */
+function ItemPicker({
+  label,
+  items,
+  excludeId,
+  selected,
+  onChange,
+}: {
+  label: string;
+  items: AdminMenuItem[];
+  excludeId?: string;
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  return (
+    <Field label={label}>
+      <div className="max-h-40 overflow-y-auto border border-brand-black/10 p-2 space-y-1">
+        {items.filter((i) => i.id !== excludeId).map((i) => {
+          const on = selected.includes(i.id);
+          return (
+            <label key={i.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={on}
+                onChange={() => onChange(on ? selected.filter((x) => x !== i.id) : [...selected, i.id])}
+              />
+              <span className="truncate">{i.name}</span>
+              <span className="font-mono text-[10px] text-brand-black/40">{i.category}</span>
+            </label>
+          );
+        })}
+      </div>
+    </Field>
   );
 }
 

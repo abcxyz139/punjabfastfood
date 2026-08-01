@@ -91,7 +91,7 @@ export async function loadAdminDashboard(
     supabase
       .from("menu_items")
       .select(
-        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until",
+        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
       )
       .order("display_order", { ascending: true }),
 
@@ -165,6 +165,11 @@ export async function loadAdminDashboard(
       addonLabel: item.addon_label,
       variantRequired: item.variant_required ?? true,
       maxAddons: item.max_addons ?? null,
+      prepTimeMinutes: item.prep_time_minutes ?? null,
+      recommendedIds: item.recommended_ids ?? [],
+      frequentlyBoughtIds: item.frequently_bought_ids ?? [],
+      mealUpgradeIds: item.meal_upgrade_ids ?? [],
+      mealUpgradeLabel: item.meal_upgrade_label || "Complete your meal",
       badges: item.badges ?? [],
       searchKeywords: item.search_keywords ?? [],
       spiceLevel: item.spice_level ?? 0,

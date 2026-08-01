@@ -263,13 +263,18 @@ export type Database = {
           description: string
           display_order: number
           featured: boolean
+          frequently_bought_ids: string[]
           id: string
           image_key: string
           in_stock: boolean
           max_addons: number | null
+          meal_upgrade_ids: string[]
+          meal_upgrade_label: string
           name: string
+          prep_time_minutes: number | null
           price: number
           product_type: string
+          recommended_ids: string[]
           search_keywords: string[]
           spice_level: number
           tag: string | null
@@ -290,13 +295,18 @@ export type Database = {
           description: string
           display_order?: number
           featured?: boolean
+          frequently_bought_ids?: string[]
           id?: string
           image_key?: string
           in_stock?: boolean
           max_addons?: number | null
+          meal_upgrade_ids?: string[]
+          meal_upgrade_label?: string
           name: string
+          prep_time_minutes?: number | null
           price: number
           product_type?: string
+          recommended_ids?: string[]
           search_keywords?: string[]
           spice_level?: number
           tag?: string | null
@@ -317,13 +327,18 @@ export type Database = {
           description?: string
           display_order?: number
           featured?: boolean
+          frequently_bought_ids?: string[]
           id?: string
           image_key?: string
           in_stock?: boolean
           max_addons?: number | null
+          meal_upgrade_ids?: string[]
+          meal_upgrade_label?: string
           name?: string
+          prep_time_minutes?: number | null
           price?: number
           product_type?: string
+          recommended_ids?: string[]
           search_keywords?: string[]
           spice_level?: number
           tag?: string | null

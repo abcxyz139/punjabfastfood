@@ -49,7 +49,7 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
     supabase
       .from("menu_items")
       .select(
-        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until",
+        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
       )
 
       .eq("active", true)
@@ -143,6 +143,11 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
           from: i.available_from ? String(i.available_from).slice(0, 5) : null,
           until: i.available_until ? String(i.available_until).slice(0, 5) : null,
         },
+        prepTimeMinutes: i.prep_time_minutes ?? null,
+        recommendedIds: i.recommended_ids ?? [],
+        frequentlyBoughtIds: i.frequently_bought_ids ?? [],
+        mealUpgradeIds: i.meal_upgrade_ids ?? [],
+        mealUpgradeLabel: i.meal_upgrade_label || "Complete your meal",
         variants: variantsByItem.get(i.id) ?? [],
         addons: addonsByItem.get(i.id) ?? [],
 

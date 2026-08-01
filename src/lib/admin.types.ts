@@ -21,6 +21,11 @@ export type AdminMenuItem = {
   spiceLevel: number;
   inStock: boolean;
   availability: Availability;
+  prepTimeMinutes: number | null;
+  recommendedIds: string[];
+  frequentlyBoughtIds: string[];
+  mealUpgradeIds: string[];
+  mealUpgradeLabel: string;
 };
 
 
@@ -44,6 +49,7 @@ export type AdminOrder = {
     unitPrice: number;
     quantity: number;
     lineTotal: number;
+    notes?: string | null;
   }>;
 };
 
