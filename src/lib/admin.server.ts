@@ -91,9 +91,10 @@ export async function loadAdminDashboard(
     supabase
       .from("menu_items")
       .select(
-        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons",
+        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until",
       )
       .order("display_order", { ascending: true }),
+
 
     supabase
       .from("orders")
