@@ -571,8 +571,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} /> Featured</label>
             </div>
 
-            <div className="border-t border-brand-black/10 pt-3 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Product behaviour</div>
+            <Advanced title="Options &amp; variants behaviour">
               <Field label="Product type">
                 <select value={editing.productType ?? "simple"} onChange={(e) => setEditing({ ...editing, productType: e.target.value as AdminMenuItem["productType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
                   <option value="simple">Simple — one price, add straight to cart</option>
@@ -592,10 +591,9 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
                   <input type="checkbox" checked={editing.variantRequired ?? true} onChange={(e) => setEditing({ ...editing, variantRequired: e.target.checked })} /> Variant required
                 </label>
               </div>
-            </div>
+            </Advanced>
 
-            <div className="border-t border-brand-black/10 pt-3 space-y-3">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-brand-black/50">Discovery &amp; availability</div>
+            <Advanced title="Discovery &amp; availability">
               <Field label="Badges (max 4)">
                 <div className="flex flex-wrap gap-1.5">
                   {BADGE_OPTIONS.map((b) => {
