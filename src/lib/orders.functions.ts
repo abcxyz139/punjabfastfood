@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { CustomerOrderInputSchema } from "./admin.schemas";
+import { isAvailableNow } from "./menu.types";
+
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
