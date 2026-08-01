@@ -1975,9 +1975,14 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
             quantity: c.quantity,
             notes: c.notes ?? null,
           })),
+          loyaltyRewardId: rewardId,
         },
       });
       orderId = result?.id ?? null;
+      serverDiscount = result?.discount ?? 0;
+      await queryClient.invalidateQueries({ queryKey: ["my-loyalty"] });
+      setRewardId(null);
+      setRewardDiscount(0);
     } catch (err) {
       console.warn("[cart] order persistence failed, continuing to WhatsApp", err);
     }
@@ -1985,7 +1990,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     const msg = buildOrderMessage(
       cart,
       { name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() },
-      { subtotal, delivery, total },
+      { subtotal, delivery, total: Math.max(0, subtotal - serverDiscount) + delivery },
       { restaurantName: settings.restaurantName, orderId },
     );
     window.open(buildWaUrl(settings.whatsappNumber, msg), "_blank", "noopener,noreferrer");
