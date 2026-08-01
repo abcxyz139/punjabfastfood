@@ -22,7 +22,7 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
     const addonIds = Array.from(new Set(data.items.flatMap((i) => i.addonIds ?? [])));
 
     const [menuRes, variantsRes, addonsRes] = await Promise.all([
-      context.supabase.from("menu_items").select("id,name,price,active").in("id", itemIds),
+      context.supabase.from("menu_items").select("id,name,price,active,in_stock,available_days,available_from,available_until").in("id", itemIds),
       variantIds.length
         ? context.supabase
             .from("menu_item_variants")
