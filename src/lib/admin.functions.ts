@@ -88,7 +88,15 @@ export const updateMenuItem = createServerFn({ method: "POST" })
         addon_label: data.addonLabel ?? null,
         variant_required: data.variantRequired,
         max_addons: data.maxAddons ?? null,
+        badges: data.badges,
+        search_keywords: data.searchKeywords,
+        spice_level: data.spiceLevel,
+        in_stock: data.inStock,
+        available_days: data.availableDays,
+        available_from: data.availableFrom ?? null,
+        available_until: data.availableUntil ?? null,
       })
+
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return loadAdminDashboard(context.supabase, context.userId);
