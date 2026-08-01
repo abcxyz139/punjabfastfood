@@ -506,6 +506,49 @@ function Menu() {
         </div>
       </motion.div>
 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-10 space-y-3"
+      >
+        <div className="flex items-center gap-3 bg-white border border-brand-black/10 px-4 py-3 focus-within:border-brand-red transition-colors">
+          <Search className="size-4 text-brand-black/40 flex-shrink-0" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search dishes, ingredients or deals…"
+            aria-label="Search the menu"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-brand-black/35"
+          />
+          {query && (
+            <button onClick={() => setQuery("")} aria-label="Clear search" className="text-brand-black/40 hover:text-brand-red">
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5 font-mono text-[10px] uppercase font-bold">
+          <button
+            onClick={() => setSpiceOnly((v) => !v)}
+            className={`px-3 py-1.5 border transition-colors flex items-center gap-1.5 ${spiceOnly ? "bg-brand-red text-white border-brand-red" : "border-brand-black/15 hover:border-brand-black"}`}
+          >
+            <Flame className="size-3" /> Spicy
+          </button>
+          {activeBadges.map((b) => (
+            <button
+              key={b}
+              onClick={() => setBadgeFilter(badgeFilter === b ? null : b)}
+              className={`px-3 py-1.5 border transition-colors ${badgeFilter === b ? "bg-brand-black text-white border-brand-black" : "border-brand-black/15 hover:border-brand-black"}`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+
+
       {isLoading && (
         <div className="flex items-center justify-center py-24 text-brand-black/50 font-mono text-xs uppercase tracking-widest">
           <Loader2 className="size-4 animate-spin mr-3" /> Loading menu…
