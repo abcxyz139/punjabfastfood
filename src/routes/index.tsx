@@ -1958,6 +1958,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
     setSubmitting(true);
     let orderId: string | null = null;
+    let serverDiscount = 0;
 
     // Persist order to Supabase before opening WhatsApp. Never block the WA flow on failure.
     try {
