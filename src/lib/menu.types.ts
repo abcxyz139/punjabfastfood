@@ -76,9 +76,19 @@ export type PublicMenuItem = {
   variantRequired: boolean;
   /** Maximum add-ons a customer may pick; null = unlimited. */
   maxAddons: number | null;
+  /** Marketing badges shown on the card. */
+  badges: string[];
+  /** Extra searchable keywords/ingredients. */
+  searchKeywords: string[];
+  /** 0 = not spicy, 3 = very spicy. */
+  spiceLevel: number;
+  /** False = sold out; card shows as unavailable. */
+  inStock: boolean;
+  availability: Availability;
   variants: MenuVariant[];
   addons: MenuAddon[];
 };
+
 
 
 export type PublicMenuSnapshot = {
