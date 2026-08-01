@@ -670,6 +670,233 @@ export type Database = {
         }
         Relationships: []
       }
+      promotion_items: {
+        Row: {
+          created_at: string
+          id: string
+          menu_item_id: string
+          promotion_id: string
+          quantity: number
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          promotion_id: string
+          quantity?: number
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          promotion_id?: string
+          quantity?: number
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_items_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotion_redemptions: {
+        Row: {
+          created_at: string
+          customer_phone: string
+          discount_amount: number
+          id: string
+          label: string
+          order_id: string | null
+          promotion_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_phone?: string
+          discount_amount?: number
+          id?: string
+          label?: string
+          order_id?: string | null
+          promotion_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_phone?: string
+          discount_amount?: number
+          id?: string
+          label?: string
+          order_id?: string | null
+          promotion_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_redemptions_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotions: {
+        Row: {
+          active: boolean
+          applicable_customer_ids: string[]
+          badge_label: string
+          bundle_price: number | null
+          buy_quantity: number
+          campaign: string
+          created_at: string
+          days_of_week: number[]
+          description: string
+          discount_value: number
+          end_time: string | null
+          ends_at: string | null
+          featured: boolean
+          free_delivery: boolean
+          get_discount_percent: number
+          get_menu_item_id: string | null
+          get_quantity: number
+          headline: string
+          id: string
+          image_key: string
+          min_order_amount: number
+          name: string
+          per_customer_limit: number | null
+          priority: number
+          promo_type: string
+          season: string
+          seo_description: string
+          seo_title: string
+          slug: string
+          stack_mode: string
+          start_time: string | null
+          starts_at: string | null
+          stock_limit: number | null
+          target_category_ids: string[]
+          target_menu_item_ids: string[]
+          target_scope: string
+          target_variant_ids: string[]
+          updated_at: string
+          usage_count: number
+          usage_limit: number | null
+        }
+        Insert: {
+          active?: boolean
+          applicable_customer_ids?: string[]
+          badge_label?: string
+          bundle_price?: number | null
+          buy_quantity?: number
+          campaign?: string
+          created_at?: string
+          days_of_week?: number[]
+          description?: string
+          discount_value?: number
+          end_time?: string | null
+          ends_at?: string | null
+          featured?: boolean
+          free_delivery?: boolean
+          get_discount_percent?: number
+          get_menu_item_id?: string | null
+          get_quantity?: number
+          headline?: string
+          id?: string
+          image_key?: string
+          min_order_amount?: number
+          name: string
+          per_customer_limit?: number | null
+          priority?: number
+          promo_type?: string
+          season?: string
+          seo_description?: string
+          seo_title?: string
+          slug: string
+          stack_mode?: string
+          start_time?: string | null
+          starts_at?: string | null
+          stock_limit?: number | null
+          target_category_ids?: string[]
+          target_menu_item_ids?: string[]
+          target_scope?: string
+          target_variant_ids?: string[]
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+        }
+        Update: {
+          active?: boolean
+          applicable_customer_ids?: string[]
+          badge_label?: string
+          bundle_price?: number | null
+          buy_quantity?: number
+          campaign?: string
+          created_at?: string
+          days_of_week?: number[]
+          description?: string
+          discount_value?: number
+          end_time?: string | null
+          ends_at?: string | null
+          featured?: boolean
+          free_delivery?: boolean
+          get_discount_percent?: number
+          get_menu_item_id?: string | null
+          get_quantity?: number
+          headline?: string
+          id?: string
+          image_key?: string
+          min_order_amount?: number
+          name?: string
+          per_customer_limit?: number | null
+          priority?: number
+          promo_type?: string
+          season?: string
+          seo_description?: string
+          seo_title?: string
+          slug?: string
+          stack_mode?: string
+          start_time?: string | null
+          starts_at?: string | null
+          stock_limit?: number | null
+          target_category_ids?: string[]
+          target_menu_item_ids?: string[]
+          target_scope?: string
+          target_variant_ids?: string[]
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_get_menu_item_id_fkey"
+            columns: ["get_menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       testimonials: {
         Row: {
           active: boolean

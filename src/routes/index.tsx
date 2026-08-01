@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { PublicMenuItem, MenuVariant, MenuAddon, CartEntry } from "@/lib/menu.types";
 import { BADGE_OPTIONS, isAvailableNow, availabilityLabel } from "@/lib/menu.types";
 import { LoyaltySection, CartLoyalty, FavoriteButton } from "@/components/loyalty";
+import { useMarketing, useCartQuote, OffersSection, PromoBadges, CartPromotions } from "@/components/marketing";
+import type { Promotion } from "@/lib/marketing.types";
 import type { CustomerOrderSummary } from "@/lib/loyalty.types";
 
 
@@ -251,7 +253,7 @@ function Home() {
       <Hero />
       <Marquee />
       <Menu />
-      <Offers />
+      <LiveOffers onOpenCart={() => setCartOpen(true)} />
       <LoyaltySection onReorder={handleReorder} onReorderItem={handleReorderItem} />
       <AiRecommendations />
       <Story />
@@ -476,6 +478,7 @@ function searchScore(item: PublicMenuItem, tokens: string[]): number {
 
 function Menu() {
   const { data, isLoading, error } = useMenuData();
+  const { badges } = useMarketing();
   const [cat, setCat] = useState<string>("All");
   const [query, setQuery] = useState("");
   const [spiceOnly, setSpiceOnly] = useState(false);
@@ -615,7 +618,7 @@ function Menu() {
         >
           <AnimatePresence mode="popLayout">
             {filtered.map((item, i) => (
-              <MenuCard key={item.id} item={item} index={i} onOpenOptions={() => setModalItem(item)} />
+              <MenuCard key={item.id} item={item} index={i} promoBadges={badges} onOpenOptions={() => setModalItem(item)} />
             ))}
           </AnimatePresence>
         </motion.div>
@@ -651,7 +654,17 @@ const BADGE_STYLE: Record<string, string> = {
   "Owner Recommended": "bg-brand-gold text-brand-black",
 };
 
-function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index: number; onOpenOptions: () => void }) {
+function MenuCard({
+  item,
+  index,
+  onOpenOptions,
+  promoBadges = {},
+}: {
+  item: PublicMenuItem;
+  index: number;
+  onOpenOptions: () => void;
+  promoBadges?: Parameters<typeof PromoBadges>[0]["badges"];
+}) {
   const hasVariants = item.variants.length > 0;
   const hasAddons = item.addons.length > 0;
   const needsOptions = hasVariants || hasAddons;
@@ -700,8 +713,9 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
       <div className="absolute top-4 left-4 z-10">
         <FavoriteButton menuItemId={item.id} name={item.name} />
       </div>
-      {(item.badges.length > 0 || item.tag) && (
+      {(item.badges.length > 0 || item.tag || (promoBadges[item.id]?.length ?? 0) > 0) && (
         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+          <PromoBadges menuItemId={item.id} badges={promoBadges} />
           {item.tag && (
             <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${item.tag.toLowerCase() === "hot" ? "bg-brand-red text-white" : "bg-brand-black text-brand-gold"}`}>
               {item.tag}
@@ -1256,78 +1270,49 @@ function OptionsModal({
   );
 }
 
-function Offers() {
-  return (
-    <section id="offers" className="bg-brand-black text-white py-24 px-6 overflow-hidden">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-16"
-        >
-          <div className="font-mono text-brand-gold text-xs font-bold uppercase tracking-[0.3em] mb-3">— Limited Time</div>
-          <h2 className="font-display text-5xl md:text-7xl uppercase tracking-tighter">
-            Smoking <span className="text-brand-orange">Hot Deals</span>
-          </h2>
-        </motion.div>
+/** Live marketing campaigns; "Claim" loads a bundle straight into the cart. */
+function LiveOffers({ onOpenCart }: { onOpenCart: () => void }) {
+  const { promotions, itemNames } = useMarketing();
+  const { data } = useMenuData();
+  const items = data?.items ?? [];
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { title: "Family Combo", price: "$24.99", was: "$38", desc: "4 Zingers · 2 Masala Fries · 1.5L Drink", color: "bg-brand-red" },
-            { title: "Tikka Tuesday", price: "$9.99", was: "$15", desc: "Full Tikka Pizza + Garlic Sauce", color: "bg-brand-orange text-brand-black" },
-            { title: "Late Night", price: "$5.50", was: "$9", desc: "Any wrap + drink, after 11pm", color: "bg-brand-gold text-brand-black" },
-          ].map((d, i) => (
-            <motion.div
-              key={d.title}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -8, rotate: -1 }}
-              className={`${d.color} p-8 relative overflow-hidden group`}
-            >
-              <div className="font-mono text-[10px] uppercase tracking-widest opacity-70 mb-2">Deal #{i + 1}</div>
-              <h3 className="font-display text-4xl uppercase tracking-tighter mb-4">{d.title}</h3>
-              <p className="text-sm opacity-80 mb-6">{d.desc}</p>
-              <div className="flex items-baseline gap-3 mb-6">
-                <span className="font-display text-5xl">{d.price}</span>
-                <span className="line-through opacity-50 text-sm">{d.was}</span>
-              </div>
-              <Countdown />
-              <button className="mt-6 w-full py-3 bg-brand-black text-white text-[10px] font-bold uppercase tracking-widest hover:bg-white hover:text-brand-black transition-colors">
-                Claim Offer
-              </button>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Countdown() {
-  const [t, setT] = useState({ h: 4, m: 22, s: 45 });
-  useEffect(() => {
-    const i = setInterval(() => {
-      setT((p) => {
-        let s = p.s - 1, m = p.m, h = p.h;
-        if (s < 0) { s = 59; m--; }
-        if (m < 0) { m = 59; h--; }
-        if (h < 0) { h = 23; }
-        return { h, m, s };
+  const addById = useCallback(
+    (menuItemId: string, quantity = 1) => {
+      const item = items.find((i) => i.id === menuItemId);
+      if (!item) return false;
+      if (item.variants.length > 0 || !item.inStock || !isAvailableNow(item.availability)) return false;
+      addEntry({
+        menuItemId: item.id,
+        name: item.name,
+        variantId: null,
+        variantName: null,
+        addonIds: [],
+        addonNames: [],
+        unitPrice: item.price,
+        quantity,
       });
-    }, 1000);
-    return () => clearInterval(i);
-  }, []);
-  return (
-    <div className="flex gap-2 font-mono text-xs uppercase">
-      <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.h).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Hrs</div></div>
-      <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.m).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Min</div></div>
-      <div className="bg-black/20 px-3 py-2 min-w-[48px] text-center"><div className="font-bold text-base">{String(t.s).padStart(2, "0")}</div><div className="text-[8px] opacity-60">Sec</div></div>
-    </div>
+      return true;
+    },
+    [items],
   );
+
+  const handleClaim = useCallback(
+    (p: Promotion) => {
+      const parts = p.items.filter((i) => i.role === "bundle" || i.role === "buy");
+      let added = 0;
+      for (const part of parts) {
+        if (addById(part.menuItemId, Math.max(1, part.quantity))) added += 1;
+      }
+      if (added > 0) {
+        onOpenCart();
+        return;
+      }
+      document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" });
+    },
+    [addById, onOpenCart],
+  );
+
+  return <OffersSection promotions={promotions} itemNames={itemNames} onClaim={handleClaim} />;
 }
 
 function Counter({ value, suffix = "" }: { value: string; suffix?: string }) {
@@ -1912,6 +1897,9 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
 function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { cart } = useCartState();
   const settings = useSettings();
+  const quote = useCartQuote(cart);
+  const { itemNames } = useMarketing();
+  const { data: menuData } = useMenuData();
   const submitOrder = useServerFn(createCustomerOrder);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -1945,9 +1933,30 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [open]);
 
   const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
-  const delivery = cart.length > 0 ? settings.deliveryCharges : 0;
-  // Reward discount shown here is indicative only — the server recalculates it authoritatively.
-  const total = Math.max(0, subtotal - rewardDiscount) + delivery;
+  // Campaign discounts come from the server quote — the browser never computes them.
+  const promoDiscount = quote?.promoDiscount ?? 0;
+  const freeDelivery = quote?.freeDelivery ?? false;
+  const delivery = cart.length === 0 || freeDelivery ? 0 : settings.deliveryCharges;
+  const total = Math.max(0, subtotal - rewardDiscount - promoDiscount) + delivery;
+
+  const addSuggested = useCallback(
+    (menuItemId: string) => {
+      const item = (menuData?.items ?? []).find((i) => i.id === menuItemId);
+      if (!item) return;
+      const variant = item.variants[0] ?? null;
+      addEntry({
+        menuItemId: item.id,
+        name: item.name,
+        variantId: variant?.id ?? null,
+        variantName: variant?.name ?? null,
+        addonIds: [],
+        addonNames: [],
+        unitPrice: variant ? variant.price : item.price,
+        quantity: 1,
+      });
+    },
+    [menuData],
+  );
 
   const handleOrder = async () => {
     setFormError(null);
@@ -1959,6 +1968,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     setSubmitting(true);
     let orderId: string | null = null;
     let serverDiscount = 0;
+    let serverFreeDelivery = freeDelivery;
 
     // Persist order to Supabase before opening WhatsApp. Never block the WA flow on failure.
     try {
@@ -1981,6 +1991,7 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
       });
       orderId = result?.id ?? null;
       serverDiscount = result?.discount ?? 0;
+      serverFreeDelivery = result?.freeDelivery ?? false;
       await queryClient.invalidateQueries({ queryKey: ["my-loyalty"] });
       setRewardId(null);
       setRewardDiscount(0);
@@ -1991,7 +2002,11 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
     const msg = buildOrderMessage(
       cart,
       { name: name.trim(), phone: phone.trim(), address: address.trim(), notes: notes.trim() },
-      { subtotal, delivery, total: Math.max(0, subtotal - serverDiscount) + delivery },
+      {
+        subtotal,
+        delivery: serverFreeDelivery ? 0 : delivery,
+        total: Math.max(0, subtotal - serverDiscount) + (serverFreeDelivery ? 0 : delivery),
+      },
       { restaurantName: settings.restaurantName, orderId },
     );
     window.open(buildWaUrl(settings.whatsappNumber, msg), "_blank", "noopener,noreferrer");
@@ -2075,6 +2090,8 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                     }}
                   />
 
+                  <CartPromotions quote={quote} onAddItem={addSuggested} itemNames={itemNames} />
+
                   <div className="pt-4 mt-4 border-t border-brand-black/10 space-y-3">
                     <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/50">Delivery Details</div>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-brand-black/10 px-4 py-3 text-sm outline-none focus:border-brand-red transition-colors" />
@@ -2092,7 +2109,16 @@ function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                 {rewardId && (
                   <div className="flex justify-between text-sm text-brand-red"><span>Loyalty reward</span><span className="font-mono font-bold">-{formatPrice(rewardDiscount)}</span></div>
                 )}
-                <div className="flex justify-between text-sm"><span className="text-brand-black/60">Delivery</span><span className="font-mono font-bold">{formatPrice(delivery)}</span></div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-brand-red">
+                    <span>Deals &amp; promotions</span>
+                    <span className="font-mono font-bold">-{formatPrice(promoDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-brand-black/60">Delivery</span>
+                  <span className="font-mono font-bold">{freeDelivery ? "Free" : formatPrice(delivery)}</span>
+                </div>
                 <div className="flex justify-between items-baseline pt-2 border-t border-brand-black/10">
                   <span className="font-display text-xl uppercase tracking-tighter">Total</span>
                   <span className="font-display text-3xl tracking-tighter text-brand-red">{formatPrice(total)}</span>

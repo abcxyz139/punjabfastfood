@@ -42,6 +42,7 @@ import type {
 } from "@/lib/admin.types";
 import { BADGE_OPTIONS } from "@/lib/menu.types";
 import { LoyaltyTab } from "@/components/admin-loyalty";
+import { MarketingTab } from "@/components/admin-marketing";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -183,7 +184,7 @@ function AdminPage() {
 
             <Tabs defaultValue="dashboard" className="w-full">
               <TabsList className="bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
-                {["dashboard", "menu", "categories", "hero", "offers", "gallery", "testimonials", "loyalty", "orders", "settings"].map((t) => (
+                {["dashboard", "menu", "categories", "hero", "offers", "marketing", "gallery", "testimonials", "loyalty", "orders", "settings"].map((t) => (
                   <TabsTrigger key={t} value={t} className="capitalize text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
                     {t}
                   </TabsTrigger>
@@ -204,6 +205,14 @@ function AdminPage() {
               </TabsContent>
               <TabsContent value="offers" className="mt-6">
                 <OffersTab items={snapshot.offers} refresh={refresh} setMessage={setMessage} saving={saving} setSaving={setSaving} />
+              </TabsContent>
+              <TabsContent value="marketing" className="mt-6">
+                <MarketingTab
+                  menuItems={snapshot.menuItems}
+                  categories={snapshot.categories}
+                  variants={snapshot.variants}
+                  setMessage={setMessage}
+                />
               </TabsContent>
               <TabsContent value="gallery" className="mt-6">
                 <GalleryTab items={snapshot.gallery} refresh={refresh} setMessage={setMessage} saving={saving} setSaving={setSaving} />
