@@ -42,6 +42,7 @@ import type {
 } from "@/lib/admin.types";
 import { BADGE_OPTIONS } from "@/lib/menu.types";
 import { LoyaltyTab } from "@/components/admin-loyalty";
+import { MarketingTab } from "@/components/admin-marketing";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
