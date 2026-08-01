@@ -624,7 +624,7 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
                 <div className="font-mono text-[10px] text-brand-black/40">{c.slug} · order {c.displayOrder} · {c.active ? "active" : "hidden"}</div>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => setDraft({ id: c.id, name: c.name, slug: c.slug, displayOrder: c.displayOrder, active: c.active })} className="px-2 py-1 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
+                <button onClick={() => setDraft({ id: c.id, name: c.name, slug: c.slug, displayOrder: c.displayOrder, active: c.active, defaultProductType: c.defaultProductType, variantLabel: c.variantLabel, addonLabel: c.addonLabel })} className="px-2 py-1 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
                 <button onClick={() => runAction(() => del({ data: { id: c.id } }), { refresh, setMessage, setSaving })} className="px-2 py-1 bg-red-600 text-white"><Trash2 className="size-3" /></button>
               </div>
             </div>
