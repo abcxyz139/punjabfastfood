@@ -697,6 +697,9 @@ function MenuCard({ item, index, onOpenOptions }: { item: PublicMenuItem; index:
       whileHover={servable ? { y: -6 } : undefined}
       className={`group bg-white p-6 transition-colors duration-500 relative ${servable ? "hover:bg-brand-gold" : ""}`}
     >
+      <div className="absolute top-4 left-4 z-10">
+        <FavoriteButton menuItemId={item.id} name={item.name} />
+      </div>
       {(item.badges.length > 0 || item.tag) && (
         <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
           {item.tag && (
