@@ -49,8 +49,9 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
     supabase
       .from("menu_items")
       .select(
-        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons",
+        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until",
       )
+
       .eq("active", true)
       .order("display_order", { ascending: true }),
 
