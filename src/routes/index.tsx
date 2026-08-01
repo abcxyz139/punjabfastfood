@@ -560,7 +560,20 @@ function Menu() {
         </div>
       )}
 
-      {!isLoading && !error && (
+      {!isLoading && !error && filtered.length === 0 && (
+        <div className="text-center py-20 border border-dashed border-brand-black/15">
+          <p className="font-display text-3xl uppercase tracking-tighter">No dishes match that</p>
+          <p className="text-xs text-brand-black/50 mt-2 mb-5">Try another word, or clear the filters.</p>
+          <button
+            onClick={() => { setQuery(""); setSpiceOnly(false); setBadgeFilter(null); setCat("All"); }}
+            className="px-5 py-3 bg-brand-black text-white font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-brand-red transition-colors"
+          >
+            Reset filters
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !error && filtered.length > 0 && (
         <motion.div
           layout
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-brand-black/5 border border-brand-black/5"
@@ -572,6 +585,7 @@ function Menu() {
           </AnimatePresence>
         </motion.div>
       )}
+
 
       <AnimatePresence>
         {modalItem && <OptionsModal item={modalItem} onClose={() => setModalItem(null)} />}
