@@ -25,6 +25,11 @@ export const MenuItemInputSchema = z.object({
   availableDays: z.array(z.number().int().min(0).max(6)).max(7).default([]),
   availableFrom: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   availableUntil: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  prepTimeMinutes: z.number().int().min(0).max(600).nullable().optional(),
+  recommendedIds: z.array(z.string().uuid()).max(12).default([]),
+  frequentlyBoughtIds: z.array(z.string().uuid()).max(12).default([]),
+  mealUpgradeIds: z.array(z.string().uuid()).max(6).default([]),
+  mealUpgradeLabel: z.string().trim().min(1).max(60).default("Complete your meal"),
 });
 
 
@@ -44,6 +49,7 @@ export const CustomerOrderInputSchema = z.object({
         variantId: z.string().uuid().nullable().optional(),
         addonIds: z.array(z.string().uuid()).max(20).default([]),
         quantity: z.number().int().min(1).max(50).default(1),
+        notes: z.string().trim().max(200).nullable().optional(),
       }),
     )
     .min(1)

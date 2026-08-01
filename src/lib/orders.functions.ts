@@ -56,6 +56,7 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
       unitPrice: number;
       quantity: number;
       lineTotal: number;
+      notes?: string | null;
     }> = [];
 
     for (const it of data.items) {
@@ -105,6 +106,7 @@ export const createCustomerOrder = createServerFn({ method: "POST" })
         unitPrice: round2(unitPrice),
         quantity: it.quantity,
         lineTotal,
+        notes: it.notes?.trim() ? it.notes.trim() : null,
       });
     }
 
