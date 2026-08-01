@@ -1887,7 +1887,7 @@ function FloatingActions({ onOpenCart }: { onOpenCart: () => void }) {
       <button
         onClick={onOpenCart}
         aria-label={count > 0 ? `Open cart, ${count} items, ${formatPrice(estimate)}` : "Open cart"}
-        className={`relative min-h-14 rounded-full bg-brand-red hover:bg-brand-orange text-white shadow-2xl active:scale-95 transition-all grid place-items-center ${count > 0 ? "flex-1 sm:flex-none px-5 flex items-center justify-between gap-4" : "size-14"}`}
+        className={`relative min-h-14 rounded-full bg-brand-red hover:bg-brand-orange text-white shadow-2xl active:scale-95 transition-all ${count > 0 ? "flex-1 sm:flex-none px-5 flex items-center justify-between gap-4" : "size-14 grid place-items-center"}`}
       >
         {count > 0 ? (
           <>
