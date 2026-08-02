@@ -445,57 +445,87 @@ async function runAction<T>(
 
 function DashboardTab({ snapshot }: { snapshot: Snapshot }) {
   const orders = snapshot.orders;
-  const pending = orders.filter((o) => ["new", "preparing", "ready"].includes(o.status));
-  const revenueAll = orders.reduce((s, o) => s + o.total, 0);
-  const revenuePaid = orders
-    .filter((o) => o.status === "completed")
-    .reduce((s, o) => s + o.total, 0);
-  const recent = orders.slice(0, 8);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const today = orders.filter((o) => new Date(o.createdAt) >= startOfToday);
 
-  const statusColor = (s: string) =>
-    s === "new" ? "bg-brand-gold text-brand-black"
-      : s === "preparing" ? "bg-brand-orange text-white"
-      : s === "ready" ? "bg-blue-500 text-white"
-      : s === "completed" ? "bg-green-600 text-white"
-      : "bg-red-600 text-white";
+  const count = (list: string[]) => orders.filter((o) => list.includes(o.status)).length;
+  const recent = orders.slice(0, 6);
+
+  // Most ordered products, counted from the saved order lines.
+  const popular = (() => {
+    const tally = new Map<string, { name: string; qty: number }>();
+    for (const o of orders) {
+      for (const li of o.items) {
+        const prev = tally.get(li.name) ?? { name: li.name, qty: 0 };
+        prev.qty += li.quantity;
+        tally.set(li.name, prev);
+      }
+    }
+    return [...tally.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
+  })();
 
   return (
-    <div className="space-y-6">
-      <div className="grid md:grid-cols-3 gap-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
         <Card>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Total revenue</div>
-          <div className="font-display text-5xl uppercase tracking-tighter">${revenueAll.toFixed(2)}</div>
-          <div className="text-xs text-brand-black/50 mt-1">across {orders.length} recent orders</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Today's orders</div>
+          <div className="font-display text-5xl uppercase tracking-tighter">{today.length}</div>
         </Card>
         <Card>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Completed revenue</div>
-          <div className="font-display text-5xl uppercase tracking-tighter text-brand-red">${revenuePaid.toFixed(2)}</div>
-          <div className="text-xs text-brand-black/50 mt-1">completed orders only</div>
-        </Card>
-        <Card>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Pending orders</div>
-          <div className="font-display text-5xl uppercase tracking-tighter">{pending.length}</div>
-          <div className="text-xs text-brand-black/50 mt-1">new / preparing / ready</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Today's revenue</div>
+          <div className="font-display text-5xl uppercase tracking-tighter text-brand-red">${today.reduce((s, o) => s + o.total, 0).toFixed(2)}</div>
         </Card>
       </div>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-3xl uppercase tracking-tighter">Recent Orders</h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">latest {recent.length}</span>
+        <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Order pipeline</h3>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="border border-brand-black/10 py-3">
+            <div className="font-display text-4xl">{count(["new"])}</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">Pending</div>
+          </div>
+          <div className="border border-brand-black/10 py-3">
+            <div className="font-display text-4xl">{count(["accepted", "preparing", "ready"])}</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">In kitchen</div>
+          </div>
+          <div className="border border-brand-black/10 py-3">
+            <div className="font-display text-4xl">{count(["completed"])}</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">Completed</div>
+          </div>
         </div>
+      </Card>
+
+      <Card>
+        <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Most ordered</h3>
+        {popular.length === 0 ? (
+          <p className="text-brand-black/50 text-sm">No orders yet.</p>
+        ) : (
+          <ul className="divide-y divide-brand-black/10">
+            {popular.map((p) => (
+              <li key={p.name} className="py-2 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                <span className="truncate font-bold">{p.name}</span>
+                <span className="font-mono text-xs text-brand-black/50 shrink-0">{p.qty} sold</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
+        <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Latest orders</h3>
         {recent.length === 0 ? (
           <p className="text-brand-black/50 text-sm">No orders yet.</p>
         ) : (
           <ul className="divide-y divide-brand-black/10">
             {recent.map((o) => (
-              <li key={o.id} className="py-3 flex items-center justify-between gap-3">
+              <li key={o.id} className="py-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                 <div className="min-w-0">
                   <div className="font-bold truncate">{o.customerName} · <span className="text-brand-black/50 font-normal">{o.customerPhone}</span></div>
                   <div className="font-mono text-[10px] uppercase text-brand-black/40">{new Date(o.createdAt).toLocaleString()} · {o.items.length} item{o.items.length === 1 ? "" : "s"}</div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tighter ${statusColor(o.status)}`}>{o.status}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tighter ${STATUS_STYLE[o.status] ?? "bg-brand-black text-white"}`}>{o.status}</span>
                   <span className="font-display text-2xl">${o.total.toFixed(2)}</span>
                 </div>
               </li>
@@ -503,27 +533,6 @@ function DashboardTab({ snapshot }: { snapshot: Snapshot }) {
           </ul>
         )}
       </Card>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Menu at a glance</h3>
-          <ul className="text-sm space-y-1 text-brand-black/70">
-            <li>{snapshot.menuItems.length} total items · {snapshot.menuItems.filter((i) => i.active).length} active</li>
-            <li>{snapshot.categories.length} categories</li>
-            <li>{snapshot.variants.length} variants · {snapshot.addons.length} add-ons</li>
-            <li>{snapshot.offers.filter((o) => o.active).length} active offers</li>
-          </ul>
-        </Card>
-        <Card>
-          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Content</h3>
-          <ul className="text-sm space-y-1 text-brand-black/70">
-            <li>{snapshot.gallery.filter((g) => g.active).length} gallery images live</li>
-            <li>{snapshot.testimonials.filter((t) => t.active).length} testimonials visible</li>
-            <li>WhatsApp: {snapshot.settings.whatsappNumber || "— not set —"}</li>
-            <li>Delivery fee: ${Number(snapshot.settings.deliveryCharges).toFixed(2)}</li>
-          </ul>
-        </Card>
-      </div>
     </div>
   );
 }
