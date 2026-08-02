@@ -209,6 +209,8 @@ export async function loadAdminDashboard(
       defaultProductType: (c.default_product_type ?? "simple") as AdminCategory["defaultProductType"],
       variantLabel: c.variant_label ?? "Choose an option",
       addonLabel: c.addon_label ?? "Add-ons",
+      quickAdd: c.quick_add ?? false,
+      mealUpgradeDefault: c.meal_upgrade_default ?? false,
     })),
 
     variants: (variantResult.data ?? []).map((v) => ({
