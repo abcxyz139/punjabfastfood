@@ -4,12 +4,8 @@ import { CustomerOrderInputSchema } from "./admin.schemas";
 import { isAvailableNow } from "./menu.types";
 import { evaluateLoyalty } from "./loyalty.server";
 import { applyPromotions, fetchPromotions, loadItemMeta, type EngineLine } from "./marketing.server";
+import { round2 } from "./money";
 
-
-
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
 
 export const createCustomerOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
