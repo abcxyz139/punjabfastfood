@@ -1191,41 +1191,76 @@ function SettingsTab({ settings, refresh, setMessage, saving, setSaving }: { set
   const [draft, setDraft] = useState(settings);
   useEffect(() => setDraft(settings), [settings]);
 
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
   return (
     <Card>
       <form onSubmit={async (e) => { e.preventDefault(); await runAction(() => up({ data: draft }), { refresh, setMessage, setSaving, okText: "Settings saved." }); }} className="space-y-4 max-w-3xl">
         <h2 className="font-display text-3xl uppercase tracking-tighter">Business Settings</h2>
+
+        {/* Shop status + announcement first — the two things owners change most */}
+        <div className="border border-brand-black/10 p-3 space-y-3">
+          <label className="flex items-center gap-3 text-sm font-bold">
+            <input type="checkbox" className="size-5" checked={draft.isOpen} onChange={(e) => setDraft({ ...draft, isOpen: e.target.checked })} />
+            Restaurant is open for orders
+          </label>
+          <Field label="Message shown when closed">
+            <TextInput value={draft.closedMessage} onChange={(e) => setDraft({ ...draft, closedMessage: e.target.value })} placeholder="We are closed. Please order after 5pm." />
+          </Field>
+          <label className="flex items-center gap-3 text-sm font-bold">
+            <input type="checkbox" className="size-5" checked={draft.announcementActive} onChange={(e) => setDraft({ ...draft, announcementActive: e.target.checked })} />
+            Show announcement bar on the website
+          </label>
+          <Field label="Announcement / notice">
+            <TextInput value={draft.announcement} onChange={(e) => setDraft({ ...draft, announcement: e.target.value })} placeholder="Free delivery on orders over 1500" />
+          </Field>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-3">
           <Field label="Restaurant Name"><TextInput value={draft.restaurantName} onChange={(e) => setDraft({ ...draft, restaurantName: e.target.value })} /></Field>
-          <Field label="WhatsApp Number (E.164)"><TextInput value={draft.whatsappNumber} onChange={(e) => setDraft({ ...draft, whatsappNumber: e.target.value })} placeholder="923017160216" /></Field>
-          <Field label="Phone"><TextInput value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /></Field>
+          <Field label="WhatsApp Number (E.164)"><TextInput inputMode="numeric" value={draft.whatsappNumber} onChange={(e) => setDraft({ ...draft, whatsappNumber: e.target.value })} placeholder="923017160216" /></Field>
+          <Field label="Phone"><TextInput inputMode="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /></Field>
+          <Field label="Second phone (optional)"><TextInput inputMode="tel" value={draft.phoneSecondary} onChange={(e) => setDraft({ ...draft, phoneSecondary: e.target.value })} /></Field>
           <Field label="Email"><TextInput type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field>
         </div>
         <Field label="Address"><TextInput value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} /></Field>
-        <Field label="Google Maps URL"><TextInput value={draft.mapsUrl} onChange={(e) => setDraft({ ...draft, mapsUrl: e.target.value })} /></Field>
-        <Field label="Logo"><ImageUploader value={draft.logoKey} onChange={(v) => setDraft({ ...draft, logoKey: v })} setMessage={setMessage} /></Field>
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Delivery Charges"><TextInput type="number" step="0.01" value={String(draft.deliveryCharges)} onChange={(e) => setDraft({ ...draft, deliveryCharges: Number(e.target.value) })} /></Field>
-          <Field label="Minimum Order"><TextInput type="number" step="0.01" value={String(draft.minOrder)} onChange={(e) => setDraft({ ...draft, minOrder: Number(e.target.value) })} /></Field>
-        </div>
         <div className="grid md:grid-cols-3 gap-3">
-          <Field label="Instagram"><TextInput value={draft.social.instagram ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, instagram: e.target.value } })} /></Field>
-          <Field label="Facebook"><TextInput value={draft.social.facebook ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, facebook: e.target.value } })} /></Field>
-          <Field label="TikTok"><TextInput value={draft.social.tiktok ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, tiktok: e.target.value } })} /></Field>
+          <Field label="Delivery Charges"><TextInput type="number" inputMode="decimal" step="0.01" value={String(draft.deliveryCharges)} onChange={(e) => setDraft({ ...draft, deliveryCharges: Number(e.target.value) })} /></Field>
+          <Field label="Minimum Order"><TextInput type="number" inputMode="decimal" step="0.01" value={String(draft.minOrder)} onChange={(e) => setDraft({ ...draft, minOrder: Number(e.target.value) })} /></Field>
+          <Field label="Delivery radius (km)"><TextInput type="number" inputMode="decimal" step="0.5" value={String(draft.deliveryRadiusKm)} onChange={(e) => setDraft({ ...draft, deliveryRadiusKm: Number(e.target.value) })} /></Field>
         </div>
+
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-brand-black/50 mb-2">Opening Hours</div>
           {draft.hours.map((h, idx) => (
             <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-2">
-              <TextInput placeholder="Day" value={h.day} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, day: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
-              <TextInput placeholder="Open" value={h.open} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, open: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
-              <TextInput placeholder="Close" value={h.close} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, close: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
-              <button type="button" onClick={() => setDraft({ ...draft, hours: draft.hours.filter((_, i) => i !== idx) })} className="px-2 bg-red-600 text-white"><Trash2 className="size-3" /></button>
+              <select
+                value={h.day}
+                onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, day: e.target.value }; setDraft({ ...draft, hours: copy }); }}
+                className="border border-brand-black/10 p-3 text-sm"
+              >
+                <option value="">Day…</option>
+                {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <TextInput type="time" value={h.open} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, open: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
+              <TextInput type="time" value={h.close} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, close: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
+              <button type="button" onClick={() => setDraft({ ...draft, hours: draft.hours.filter((_, i) => i !== idx) })} className="px-3 bg-red-600 text-white"><Trash2 className="size-4" /></button>
             </div>
           ))}
-          <button type="button" onClick={() => setDraft({ ...draft, hours: [...draft.hours, { day: "", open: "", close: "" }] })} className="text-xs font-bold uppercase border border-brand-black/10 px-3 py-1 inline-flex items-center gap-1"><Plus className="size-3" /> Add hours row</button>
+          <button type="button" onClick={() => setDraft({ ...draft, hours: [...draft.hours, { day: "", open: "", close: "" }] })} className="min-h-11 text-xs font-bold uppercase border border-brand-black/10 px-3 inline-flex items-center gap-1"><Plus className="size-4" /> Add hours row</button>
         </div>
-        <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save Settings</Btn>
+
+        <Advanced title="Logo, map &amp; social links">
+          <Field label="Logo"><ImageUploader value={draft.logoKey} onChange={(v) => setDraft({ ...draft, logoKey: v })} setMessage={setMessage} /></Field>
+          <Field label="Google Maps URL"><TextInput value={draft.mapsUrl} onChange={(e) => setDraft({ ...draft, mapsUrl: e.target.value })} /></Field>
+          <div className="grid md:grid-cols-3 gap-3">
+            <Field label="Instagram"><TextInput value={draft.social.instagram ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, instagram: e.target.value } })} /></Field>
+            <Field label="Facebook"><TextInput value={draft.social.facebook ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, facebook: e.target.value } })} /></Field>
+            <Field label="TikTok"><TextInput value={draft.social.tiktok ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, tiktok: e.target.value } })} /></Field>
+          </div>
+        </Advanced>
+
+        <Btn disabled={saving} className="w-full justify-center min-h-12">{saving ? <><Loader2 className="size-4 animate-spin" /> Saving…</> : <><Save className="size-4" /> Save Settings</>}</Btn>
       </form>
     </Card>
   );
