@@ -64,6 +64,7 @@ function AdminPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const loadDashboard = useServerFn(getAdminDashboard);
+  const saveSettings = useServerFn(updateBusinessSettings);
   const claimAdmin = useServerFn(claimFirstAdmin);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
