@@ -76,6 +76,10 @@ export const CategoryInputSchema = z.object({
   defaultProductType: ProductTypeSchema.default("simple"),
   variantLabel: z.string().trim().min(1).max(60).default("Choose an option"),
   addonLabel: z.string().trim().min(1).max(60).default("Add-ons"),
+  /** One-tap ordering for this category (drinks, desserts…). */
+  quickAdd: z.boolean().default(false),
+  /** Pre-enable "Complete your meal" upsells for new products here. */
+  mealUpgradeDefault: z.boolean().default(false),
 });
 
 
