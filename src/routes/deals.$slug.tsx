@@ -4,10 +4,11 @@ import { ArrowLeft, Tag, Timer, Gift } from "lucide-react";
 import { getPromotionBySlug } from "@/lib/marketing.functions";
 import { promotionLabel, scheduleLabel, remainingStock } from "@/lib/marketing.types";
 import { PromoCountdown } from "@/components/marketing";
+import { canonical } from "@/lib/site";
 
 export const Route = createFileRoute("/deals/$slug")({
   loader: ({ params }) => getPromotionBySlug({ data: { slug: params.slug } }),
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     const promo = loaderData?.promotion;
     const title = promo
       ? (promo.seoTitle || `${promo.name} — Punjab Fast Food Deal`).slice(0, 60)
@@ -23,9 +24,12 @@ export const Route = createFileRoute("/deals/$slug")({
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
+        ...(promo ? [] : [{ name: "robots", content: "noindex, follow" }]),
       ],
+      links: [{ rel: "canonical", href: canonical(`/deals/${params.slug}`) }],
     };
   },
+
   errorComponent: () => (
     <Shell title="Deal unavailable" body="We couldn't load this campaign. Please try again." />
   ),

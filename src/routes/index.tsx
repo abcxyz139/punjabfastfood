@@ -136,7 +136,9 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Punjab Fast Food — Taste the Real Flavor of Punjab" },
       { property: "og:description", content: "Premium Punjabi street-food: zinger burgers, tikka pizzas, shawarma wraps, masala fries. Order online." },
     ],
+    links: [{ rel: "canonical", href: canonical("/") }],
   }),
+
   component: Home,
 });
 
