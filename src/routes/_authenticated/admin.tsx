@@ -192,18 +192,47 @@ function AdminPage() {
               </div>
             )}
 
-            <div className="grid md:grid-cols-4 gap-4">
-              <StatCard icon={<Utensils className="size-5 text-brand-red" />} label="Active Items" value={String(stats.active)} />
-              <StatCard icon={<Star className="size-5 text-brand-red" />} label="Featured" value={String(stats.featured)} />
-              <StatCard icon={<ShoppingBag className="size-5 text-brand-red" />} label="Open Orders" value={String(stats.openOrders)} />
-              <StatCard icon={<Flame className="size-5 text-brand-red" />} label="Recent Revenue" value={`$${stats.revenue.toFixed(2)}`} />
+            {/* Restaurant Open/Closed — one tap, always visible */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border border-white/10 bg-white/5 p-4">
+              <div className="min-w-0">
+                <div className="font-display text-2xl uppercase tracking-tighter">
+                  Restaurant is {snapshot.settings.isOpen ? "Open" : "Closed"}
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+                  {snapshot.settings.isOpen ? "Customers can order now" : "Ordering is paused on the website"}
+                </div>
+              </div>
+              <button
+                onClick={toggleOpen}
+                disabled={saving}
+                className={`min-h-12 px-5 font-bold uppercase tracking-tighter text-xs disabled:opacity-50 ${snapshot.settings.isOpen ? "bg-red-600 text-white" : "bg-green-600 text-white"}`}
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : snapshot.settings.isOpen ? "Close now" : "Open now"}
+              </button>
             </div>
 
-            <Tabs defaultValue="dashboard" className="w-full">
-              <TabsList className="bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
-                {["dashboard", "menu", "categories", "hero", "offers", "marketing", "gallery", "testimonials", "loyalty", "orders", "settings"].map((t) => (
-                  <TabsTrigger key={t} value={t} className="capitalize text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                    {t}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard icon={<ShoppingBag className="size-5 text-brand-red" />} label="Today's Orders" value={String(stats.todayOrders)} />
+              <StatCard icon={<Flame className="size-5 text-brand-red" />} label="Today's Revenue" value={`$${stats.todayRevenue.toFixed(2)}`} />
+              <StatCard icon={<Star className="size-5 text-brand-red" />} label="New Orders" value={String(stats.newOrders)} />
+              <StatCard icon={<Utensils className="size-5 text-brand-red" />} label="In Kitchen" value={String(stats.preparing)} />
+            </div>
+
+            <Tabs value={tab} onValueChange={setTab} className="w-full">
+              {/* Mobile: a single large picker instead of a wrapping tab row */}
+              <select
+                value={tab}
+                onChange={(e) => setTab(e.target.value)}
+                className="md:hidden w-full min-h-12 bg-white text-brand-black px-3 font-bold uppercase tracking-tighter text-sm"
+              >
+                {ADMIN_TABS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <TabsList className="hidden md:flex bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
+                {ADMIN_TABS.map((t) => (
+                  <TabsTrigger key={t.value} value={t.value} className="text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                    {t.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
