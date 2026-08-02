@@ -129,6 +129,7 @@ export type AdminBusinessSettings = {
   restaurantName: string;
   logoKey: string;
   phone: string;
+  phoneSecondary: string;
   whatsappNumber: string;
   email: string;
   address: string;
@@ -136,6 +137,11 @@ export type AdminBusinessSettings = {
   hours: Array<{ day: string; open: string; close: string }>;
   deliveryCharges: number;
   minOrder: number;
+  deliveryRadiusKm: number;
+  isOpen: boolean;
+  closedMessage: string;
+  announcement: string;
+  announcementActive: boolean;
   social: { instagram?: string; facebook?: string; tiktok?: string };
 };
 
