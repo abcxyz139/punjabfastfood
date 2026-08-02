@@ -273,6 +273,7 @@ function Home() {
     <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
       <LoadingScreen />
       <Nav onOpenCart={() => setCartOpen(true)} />
+      <OwnerNotices />
       <Hero />
       <Marquee />
       <Menu />
