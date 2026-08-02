@@ -39,7 +39,29 @@ function useSettings() {
     whatsappNumber: data?.whatsappNumber ?? DEFAULT_WHATSAPP_NUMBER,
     deliveryCharges: data?.deliveryCharges ?? DEFAULT_DELIVERY_CHARGES,
     minOrder: data?.minOrder ?? 0,
+    isOpen: data?.isOpen ?? true,
+    closedMessage: data?.closedMessage ?? "",
+    announcement: data?.announcement ?? "",
   };
+}
+
+/** Owner-controlled announcement + closed notice, driven from Admin → Settings. */
+function OwnerNotices() {
+  const { isOpen, closedMessage, announcement } = useSettings();
+  return (
+    <>
+      {!isOpen && (
+        <div className="bg-red-700 text-white px-4 py-2 text-center text-xs font-bold uppercase tracking-tighter">
+          {closedMessage || "We are currently closed — orders will be taken when we reopen."}
+        </div>
+      )}
+      {announcement && (
+        <div className="bg-brand-gold text-brand-black px-4 py-2 text-center text-xs font-bold uppercase tracking-tighter">
+          {announcement}
+        </div>
+      )}
+    </>
+  );
 }
 
 // Back-compat helpers used across static call sites — these use defaults; components
@@ -251,6 +273,7 @@ function Home() {
     <div className="min-h-screen bg-white font-body text-brand-black selection:bg-brand-gold selection:text-brand-black overflow-x-hidden">
       <LoadingScreen />
       <Nav onOpenCart={() => setCartOpen(true)} />
+      <OwnerNotices />
       <Hero />
       <Marquee />
       <Menu />

@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: AdminBusinessSettings = {
   restaurantName: "Punjab Fast Food",
   logoKey: "",
   phone: "",
+  phoneSecondary: "",
   whatsappNumber: "923017160216",
   email: "",
   address: "",
@@ -35,6 +36,11 @@ const DEFAULT_SETTINGS: AdminBusinessSettings = {
   hours: [],
   deliveryCharges: 0,
   minOrder: 0,
+  deliveryRadiusKm: 0,
+  isOpen: true,
+  closedMessage: "",
+  announcement: "",
+  announcementActive: false,
   social: {},
 };
 
@@ -103,7 +109,7 @@ export async function loadAdminDashboard(
       .limit(50),
     supabase
       .from("categories")
-      .select("id,name,slug,display_order,active,default_product_type,variant_label,addon_label")
+      .select("id,name,slug,display_order,active,default_product_type,variant_label,addon_label,quick_add,meal_upgrade_default")
       .order("display_order", { ascending: true }),
 
     supabase
@@ -203,6 +209,8 @@ export async function loadAdminDashboard(
       defaultProductType: (c.default_product_type ?? "simple") as AdminCategory["defaultProductType"],
       variantLabel: c.variant_label ?? "Choose an option",
       addonLabel: c.addon_label ?? "Add-ons",
+      quickAdd: c.quick_add ?? false,
+      mealUpgradeDefault: c.meal_upgrade_default ?? false,
     })),
 
     variants: (variantResult.data ?? []).map((v) => ({
@@ -262,6 +270,7 @@ export async function loadAdminDashboard(
           restaurantName: s.restaurant_name,
           logoKey: s.logo_key,
           phone: s.phone,
+          phoneSecondary: s.phone_secondary ?? "",
           whatsappNumber: s.whatsapp_number,
           email: s.email,
           address: s.address,
@@ -269,6 +278,11 @@ export async function loadAdminDashboard(
           hours: (s.hours as AdminBusinessSettings["hours"]) ?? [],
           deliveryCharges: Number(s.delivery_charges),
           minOrder: Number(s.min_order),
+          deliveryRadiusKm: Number(s.delivery_radius_km ?? 0),
+          isOpen: s.is_open ?? true,
+          closedMessage: s.closed_message ?? "",
+          announcement: s.announcement ?? "",
+          announcementActive: s.announcement_active ?? false,
           social: (s.social as AdminBusinessSettings["social"]) ?? {},
         }
       : DEFAULT_SETTINGS,

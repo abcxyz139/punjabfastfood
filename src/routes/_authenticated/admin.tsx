@@ -60,10 +60,26 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Snapshot = AdminDashboardSnapshot;
 
+/** Tab order = how often the owner needs each screen. */
+const ADMIN_TABS = [
+  { value: "dashboard", label: "Dashboard" },
+  { value: "orders", label: "Orders" },
+  { value: "menu", label: "Products" },
+  { value: "categories", label: "Categories" },
+  { value: "offers", label: "Offers" },
+  { value: "hero", label: "Homepage" },
+  { value: "gallery", label: "Photos" },
+  { value: "testimonials", label: "Reviews" },
+  { value: "marketing", label: "Marketing" },
+  { value: "loyalty", label: "Loyalty" },
+  { value: "settings", label: "Settings" },
+] as const;
+
 function AdminPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const loadDashboard = useServerFn(getAdminDashboard);
+  const saveSettings = useServerFn(updateBusinessSettings);
   const claimAdmin = useServerFn(claimFirstAdmin);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,14 +120,29 @@ function AdminPage() {
     navigate({ to: "/auth", replace: true });
   };
 
+  const [tab, setTab] = useState("dashboard");
+
+  const toggleOpen = async () => {
+    if (!snapshot) return;
+    const next = !snapshot.settings.isOpen;
+    await runAction(() => saveSettings({ data: { ...snapshot.settings, isOpen: next } }), {
+      refresh,
+      setMessage,
+      setSaving,
+      okText: next ? "Restaurant is now OPEN." : "Restaurant is now CLOSED.",
+    });
+  };
+
   const stats = useMemo(() => {
-    const menuItems = snapshot?.menuItems ?? [];
     const orders = snapshot?.orders ?? [];
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const today = orders.filter((o) => new Date(o.createdAt) >= startOfToday);
     return {
-      active: menuItems.filter((i) => i.active).length,
-      featured: menuItems.filter((i) => i.featured).length,
-      openOrders: orders.filter((o) => ["new", "preparing", "ready"].includes(o.status)).length,
-      revenue: orders.reduce((s, o) => s + o.total, 0),
+      todayOrders: today.length,
+      todayRevenue: today.reduce((s, o) => s + o.total, 0),
+      newOrders: orders.filter((o) => o.status === "new").length,
+      preparing: orders.filter((o) => ["accepted", "preparing", "ready"].includes(o.status)).length,
     };
   }, [snapshot]);
 
@@ -176,18 +207,47 @@ function AdminPage() {
               </div>
             )}
 
-            <div className="grid md:grid-cols-4 gap-4">
-              <StatCard icon={<Utensils className="size-5 text-brand-red" />} label="Active Items" value={String(stats.active)} />
-              <StatCard icon={<Star className="size-5 text-brand-red" />} label="Featured" value={String(stats.featured)} />
-              <StatCard icon={<ShoppingBag className="size-5 text-brand-red" />} label="Open Orders" value={String(stats.openOrders)} />
-              <StatCard icon={<Flame className="size-5 text-brand-red" />} label="Recent Revenue" value={`$${stats.revenue.toFixed(2)}`} />
+            {/* Restaurant Open/Closed — one tap, always visible */}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border border-white/10 bg-white/5 p-4">
+              <div className="min-w-0">
+                <div className="font-display text-2xl uppercase tracking-tighter">
+                  Restaurant is {snapshot.settings.isOpen ? "Open" : "Closed"}
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+                  {snapshot.settings.isOpen ? "Customers can order now" : "Ordering is paused on the website"}
+                </div>
+              </div>
+              <button
+                onClick={toggleOpen}
+                disabled={saving}
+                className={`min-h-12 px-5 font-bold uppercase tracking-tighter text-xs disabled:opacity-50 ${snapshot.settings.isOpen ? "bg-red-600 text-white" : "bg-green-600 text-white"}`}
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : snapshot.settings.isOpen ? "Close now" : "Open now"}
+              </button>
             </div>
 
-            <Tabs defaultValue="dashboard" className="w-full">
-              <TabsList className="bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
-                {["dashboard", "menu", "categories", "hero", "offers", "marketing", "gallery", "testimonials", "loyalty", "orders", "settings"].map((t) => (
-                  <TabsTrigger key={t} value={t} className="capitalize text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
-                    {t}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard icon={<ShoppingBag className="size-5 text-brand-red" />} label="Today's Orders" value={String(stats.todayOrders)} />
+              <StatCard icon={<Flame className="size-5 text-brand-red" />} label="Today's Revenue" value={`$${stats.todayRevenue.toFixed(2)}`} />
+              <StatCard icon={<Star className="size-5 text-brand-red" />} label="New Orders" value={String(stats.newOrders)} />
+              <StatCard icon={<Utensils className="size-5 text-brand-red" />} label="In Kitchen" value={String(stats.preparing)} />
+            </div>
+
+            <Tabs value={tab} onValueChange={setTab} className="w-full">
+              {/* Mobile: a single large picker instead of a wrapping tab row */}
+              <select
+                value={tab}
+                onChange={(e) => setTab(e.target.value)}
+                className="md:hidden w-full min-h-12 bg-white text-brand-black px-3 font-bold uppercase tracking-tighter text-sm"
+              >
+                {ADMIN_TABS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <TabsList className="hidden md:flex bg-white/5 border border-white/10 h-auto flex-wrap justify-start p-1">
+                {ADMIN_TABS.map((t) => (
+                  <TabsTrigger key={t.value} value={t.value} className="text-xs font-bold uppercase tracking-tighter data-[state=active]:bg-brand-red data-[state=active]:text-white">
+                    {t.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -385,57 +445,87 @@ async function runAction<T>(
 
 function DashboardTab({ snapshot }: { snapshot: Snapshot }) {
   const orders = snapshot.orders;
-  const pending = orders.filter((o) => ["new", "preparing", "ready"].includes(o.status));
-  const revenueAll = orders.reduce((s, o) => s + o.total, 0);
-  const revenuePaid = orders
-    .filter((o) => o.status === "completed")
-    .reduce((s, o) => s + o.total, 0);
-  const recent = orders.slice(0, 8);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const today = orders.filter((o) => new Date(o.createdAt) >= startOfToday);
 
-  const statusColor = (s: string) =>
-    s === "new" ? "bg-brand-gold text-brand-black"
-      : s === "preparing" ? "bg-brand-orange text-white"
-      : s === "ready" ? "bg-blue-500 text-white"
-      : s === "completed" ? "bg-green-600 text-white"
-      : "bg-red-600 text-white";
+  const count = (list: string[]) => orders.filter((o) => list.includes(o.status)).length;
+  const recent = orders.slice(0, 6);
+
+  // Most ordered products, counted from the saved order lines.
+  const popular = (() => {
+    const tally = new Map<string, { name: string; qty: number }>();
+    for (const o of orders) {
+      for (const li of o.items) {
+        const prev = tally.get(li.name) ?? { name: li.name, qty: 0 };
+        prev.qty += li.quantity;
+        tally.set(li.name, prev);
+      }
+    }
+    return [...tally.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
+  })();
 
   return (
-    <div className="space-y-6">
-      <div className="grid md:grid-cols-3 gap-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
         <Card>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Total revenue</div>
-          <div className="font-display text-5xl uppercase tracking-tighter">${revenueAll.toFixed(2)}</div>
-          <div className="text-xs text-brand-black/50 mt-1">across {orders.length} recent orders</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Today's orders</div>
+          <div className="font-display text-5xl uppercase tracking-tighter">{today.length}</div>
         </Card>
         <Card>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Completed revenue</div>
-          <div className="font-display text-5xl uppercase tracking-tighter text-brand-red">${revenuePaid.toFixed(2)}</div>
-          <div className="text-xs text-brand-black/50 mt-1">completed orders only</div>
-        </Card>
-        <Card>
-          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Pending orders</div>
-          <div className="font-display text-5xl uppercase tracking-tighter">{pending.length}</div>
-          <div className="text-xs text-brand-black/50 mt-1">new / preparing / ready</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">Today's revenue</div>
+          <div className="font-display text-5xl uppercase tracking-tighter text-brand-red">${today.reduce((s, o) => s + o.total, 0).toFixed(2)}</div>
         </Card>
       </div>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-3xl uppercase tracking-tighter">Recent Orders</h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-brand-black/40">latest {recent.length}</span>
+        <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Order pipeline</h3>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="border border-brand-black/10 py-3">
+            <div className="font-display text-4xl">{count(["new"])}</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">Pending</div>
+          </div>
+          <div className="border border-brand-black/10 py-3">
+            <div className="font-display text-4xl">{count(["accepted", "preparing", "ready"])}</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">In kitchen</div>
+          </div>
+          <div className="border border-brand-black/10 py-3">
+            <div className="font-display text-4xl">{count(["completed"])}</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">Completed</div>
+          </div>
         </div>
+      </Card>
+
+      <Card>
+        <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Most ordered</h3>
+        {popular.length === 0 ? (
+          <p className="text-brand-black/50 text-sm">No orders yet.</p>
+        ) : (
+          <ul className="divide-y divide-brand-black/10">
+            {popular.map((p) => (
+              <li key={p.name} className="py-2 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                <span className="truncate font-bold">{p.name}</span>
+                <span className="font-mono text-xs text-brand-black/50 shrink-0">{p.qty} sold</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
+        <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Latest orders</h3>
         {recent.length === 0 ? (
           <p className="text-brand-black/50 text-sm">No orders yet.</p>
         ) : (
           <ul className="divide-y divide-brand-black/10">
             {recent.map((o) => (
-              <li key={o.id} className="py-3 flex items-center justify-between gap-3">
+              <li key={o.id} className="py-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                 <div className="min-w-0">
                   <div className="font-bold truncate">{o.customerName} · <span className="text-brand-black/50 font-normal">{o.customerPhone}</span></div>
                   <div className="font-mono text-[10px] uppercase text-brand-black/40">{new Date(o.createdAt).toLocaleString()} · {o.items.length} item{o.items.length === 1 ? "" : "s"}</div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tighter ${statusColor(o.status)}`}>{o.status}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-tighter ${STATUS_STYLE[o.status] ?? "bg-brand-black text-white"}`}>{o.status}</span>
                   <span className="font-display text-2xl">${o.total.toFixed(2)}</span>
                 </div>
               </li>
@@ -443,27 +533,6 @@ function DashboardTab({ snapshot }: { snapshot: Snapshot }) {
           </ul>
         )}
       </Card>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Menu at a glance</h3>
-          <ul className="text-sm space-y-1 text-brand-black/70">
-            <li>{snapshot.menuItems.length} total items · {snapshot.menuItems.filter((i) => i.active).length} active</li>
-            <li>{snapshot.categories.length} categories</li>
-            <li>{snapshot.variants.length} variants · {snapshot.addons.length} add-ons</li>
-            <li>{snapshot.offers.filter((o) => o.active).length} active offers</li>
-          </ul>
-        </Card>
-        <Card>
-          <h3 className="font-display text-2xl uppercase tracking-tighter mb-3">Content</h3>
-          <ul className="text-sm space-y-1 text-brand-black/70">
-            <li>{snapshot.gallery.filter((g) => g.active).length} gallery images live</li>
-            <li>{snapshot.testimonials.filter((t) => t.active).length} testimonials visible</li>
-            <li>WhatsApp: {snapshot.settings.whatsappNumber || "— not set —"}</li>
-            <li>Delivery fee: ${Number(snapshot.settings.deliveryCharges).toFixed(2)}</li>
-          </ul>
-        </Card>
-      </div>
     </div>
   );
 }
@@ -559,11 +628,27 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
             <Field label="1. Product photo"><ImageUploader value={editing.imageKey ?? ""} onChange={(v) => setEditing({ ...editing, imageKey: v })} setMessage={setMessage} /></Field>
             <Field label="2. Product name"><TextInput value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required /></Field>
             <Field label="3. Category">
-              <select value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="w-full border border-brand-black/10 p-3 text-sm">
+              <select
+                value={editing.category ?? ""}
+                onChange={(e) => {
+                  const cat = snapshot.categories.find((c) => c.name === e.target.value);
+                  // New products inherit the category's defaults so owners rarely touch Advanced.
+                  const inherit = cat && !editing.id
+                    ? {
+                        productType: cat.defaultProductType,
+                        variantLabel: cat.variantLabel,
+                        addonLabel: cat.addonLabel,
+                        variantRequired: cat.quickAdd ? false : true,
+                      }
+                    : {};
+                  setEditing({ ...editing, category: e.target.value, ...inherit });
+                }}
+                className="w-full min-h-12 border border-brand-black/10 px-3 text-sm"
+              >
                 {snapshot.categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </Field>
-            <Field label="4. Price"><TextInput type="number" step="0.01" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
+            <Field label="4. Price"><TextInput type="number" inputMode="decimal" step="0.01" className="min-h-12" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
             <Field label="Short description (one line customers can skim)">
               <TextArea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={2} required />
             </Field>
@@ -807,7 +892,7 @@ function VariantsAddonsPanel({ item, snapshot, refresh, setMessage, setSaving }:
 function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminCategory>) {
   const up = useServerFn(upsertCategory);
   const del = useServerFn(deleteCategory);
-  const empty = { id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true, defaultProductType: "simple" as AdminCategory["defaultProductType"], variantLabel: "Choose an option", addonLabel: "Add-ons" };
+  const empty = { id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true, defaultProductType: "simple" as AdminCategory["defaultProductType"], variantLabel: "Choose an option", addonLabel: "Add-ons", quickAdd: true, mealUpgradeDefault: false };
   const [draft, setDraft] = useState(empty);
 
   const submit = async (e: FormEvent) => {
@@ -816,6 +901,18 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
     setDraft(empty);
   };
 
+  const editDraft = (c: AdminCategory) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    displayOrder: c.displayOrder,
+    active: c.active,
+    defaultProductType: c.defaultProductType,
+    variantLabel: c.variantLabel,
+    addonLabel: c.addonLabel,
+    quickAdd: c.quickAdd,
+    mealUpgradeDefault: c.mealUpgradeDefault,
+  });
 
   return (
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
@@ -823,14 +920,16 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
         <h2 className="font-display text-3xl uppercase tracking-tighter mb-4">Categories</h2>
         <div className="space-y-2">
           {items.map((c) => (
-            <div key={c.id} className="flex justify-between items-center py-2 border-b border-brand-black/10">
-              <div>
-                <div className="font-bold">{c.name}</div>
-                <div className="font-mono text-[10px] text-brand-black/40">{c.slug} · order {c.displayOrder} · {c.active ? "active" : "hidden"}</div>
+            <div key={c.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 border-b border-brand-black/10">
+              <div className="min-w-0">
+                <div className="font-bold truncate">{c.name}</div>
+                <div className="font-mono text-[10px] text-brand-black/40 truncate">
+                  order {c.displayOrder} · {c.active ? "visible" : "hidden"} · {c.quickAdd ? "1-tap add" : "opens options"}
+                </div>
               </div>
-              <div className="flex gap-1">
-                <button onClick={() => setDraft({ id: c.id, name: c.name, slug: c.slug, displayOrder: c.displayOrder, active: c.active, defaultProductType: c.defaultProductType, variantLabel: c.variantLabel, addonLabel: c.addonLabel })} className="px-2 py-1 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
-                <button onClick={() => runAction(() => del({ data: { id: c.id } }), { refresh, setMessage, setSaving })} className="px-2 py-1 bg-red-600 text-white"><Trash2 className="size-3" /></button>
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => setDraft(editDraft(c))} className="min-h-10 px-3 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
+                <button onClick={() => runAction(() => del({ data: { id: c.id } }), { refresh, setMessage, setSaving })} className="min-h-10 px-3 bg-red-600 text-white"><Trash2 className="size-3" /></button>
               </div>
             </div>
           ))}
@@ -839,23 +938,33 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
       <Card>
         <form onSubmit={submit} className="space-y-3">
           <h3 className="font-display text-2xl uppercase tracking-tighter">{draft.id ? "Edit" : "New"} Category</h3>
-          <Field label="Name"><TextInput required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value, slug: draft.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} /></Field>
-          <Field label="Slug"><TextInput required value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} /></Field>
-          <Field label="Order"><TextInput type="number" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
-          <Field label="Default product type">
-            <select value={draft.defaultProductType} onChange={(e) => setDraft({ ...draft, defaultProductType: e.target.value as AdminCategory["defaultProductType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
-              <option value="simple">Simple</option>
-              <option value="variable">Variable</option>
-              <option value="combo">Combo / deal</option>
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Variant label"><TextInput value={draft.variantLabel} onChange={(e) => setDraft({ ...draft, variantLabel: e.target.value })} /></Field>
-            <Field label="Add-on label"><TextInput value={draft.addonLabel} onChange={(e) => setDraft({ ...draft, addonLabel: e.target.value })} /></Field>
-          </div>
-          <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Active</label>
+          <Field label="Name"><TextInput required className="min-h-12" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value, slug: draft.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} /></Field>
+          <Field label="Order on website"><TextInput type="number" inputMode="numeric" className="min-h-12" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
+          <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Show this category</label>
 
-          <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
+          {/* Defaults new products in this category inherit */}
+          <div className="border border-brand-black/10 p-3 space-y-3">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">Defaults for new products here</div>
+            <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.quickAdd} onChange={(e) => setDraft({ ...draft, quickAdd: e.target.checked })} /> One-tap add to cart (drinks, desserts)</label>
+            <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.mealUpgradeDefault} onChange={(e) => setDraft({ ...draft, mealUpgradeDefault: e.target.checked })} /> Offer meal upgrade suggestions</label>
+          </div>
+
+          <Advanced title="Advanced: product type &amp; labels">
+            <Field label="Slug (website address)"><TextInput required value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} /></Field>
+            <Field label="Default product type">
+              <select value={draft.defaultProductType} onChange={(e) => setDraft({ ...draft, defaultProductType: e.target.value as AdminCategory["defaultProductType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
+                <option value="simple">Simple</option>
+                <option value="variable">Variable</option>
+                <option value="combo">Combo / deal</option>
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Variant label"><TextInput value={draft.variantLabel} onChange={(e) => setDraft({ ...draft, variantLabel: e.target.value })} /></Field>
+              <Field label="Add-on label"><TextInput value={draft.addonLabel} onChange={(e) => setDraft({ ...draft, addonLabel: e.target.value })} /></Field>
+            </div>
+          </Advanced>
+
+          <Btn disabled={saving} className="w-full justify-center min-h-12">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save Category</Btn>
         </form>
       </Card>
     </div>
@@ -974,22 +1083,33 @@ function GalleryTab({ items, refresh, setMessage, saving, setSaving }: TabProps<
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
       <Card>
         <h2 className="font-display text-3xl uppercase tracking-tighter mb-4">Gallery</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {items.length === 0 && <p className="text-brand-black/50 text-sm col-span-full">No photos yet.</p>}
           {items.map((g) => (
-            <div key={g.id} className="relative group">
-              <img src={g.imageKey} alt={g.caption ?? ""} className="aspect-square object-cover w-full" />
-              <button onClick={() => runAction(() => del({ data: { id: g.id } }), { refresh, setMessage, setSaving })} className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100"><Trash2 className="size-3" /></button>
+            <div key={g.id} className="space-y-1">
+              <img src={g.imageKey} alt={g.caption ?? ""} className={`aspect-square object-cover w-full ${g.active ? "" : "opacity-40"}`} />
+              <div className="flex gap-1">
+                <button onClick={() => setDraft({ id: g.id, imageKey: g.imageKey, caption: g.caption ?? "", displayOrder: g.displayOrder, active: g.active })} className="flex-1 min-h-10 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
+                <button
+                  onClick={() => runAction(() => up({ data: { id: g.id, imageKey: g.imageKey, caption: g.caption, displayOrder: g.displayOrder, active: !g.active } }), { refresh, setMessage, setSaving, okText: g.active ? "Photo hidden." : "Photo shown." })}
+                  className="flex-1 min-h-10 text-[10px] font-bold uppercase border border-brand-black/10"
+                >
+                  {g.active ? "Hide" : "Show"}
+                </button>
+                <button onClick={() => runAction(() => del({ data: { id: g.id } }), { refresh, setMessage, setSaving })} className="min-h-10 px-2 bg-red-600 text-white"><Trash2 className="size-3" /></button>
+              </div>
             </div>
           ))}
         </div>
       </Card>
       <Card>
         <form onSubmit={submit} className="space-y-3">
-          <h3 className="font-display text-2xl uppercase tracking-tighter">Add Image</h3>
+          <h3 className="font-display text-2xl uppercase tracking-tighter">{draft.id ? "Edit" : "Add"} Photo</h3>
           <Field label="Image"><ImageUploader value={draft.imageKey} onChange={(v) => setDraft({ ...draft, imageKey: v })} setMessage={setMessage} /></Field>
           <Field label="Caption"><TextInput value={draft.caption} onChange={(e) => setDraft({ ...draft, caption: e.target.value })} /></Field>
           <Field label="Order"><TextInput type="number" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
-          <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Add</Btn>
+          <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Show on website</label>
+          <Btn disabled={saving} className="w-full justify-center min-h-12">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {draft.id ? "Save photo" : "Add photo"}</Btn>
         </form>
       </Card>
     </div>
@@ -1047,11 +1167,34 @@ function TestimonialsTab({ items, refresh, setMessage, saving, setSaving }: TabP
 
 /* --------------------------------- Orders --------------------------------- */
 
+const ORDER_FLOW = ["new", "accepted", "preparing", "ready", "completed", "cancelled"] as const;
+type OrderStatus = (typeof ORDER_FLOW)[number];
+
+const STATUS_STYLE: Record<string, string> = {
+  new: "bg-brand-gold text-brand-black",
+  accepted: "bg-brand-orange text-white",
+  preparing: "bg-brand-orange text-white",
+  ready: "bg-blue-500 text-white",
+  completed: "bg-green-600 text-white",
+  cancelled: "bg-red-600 text-white",
+};
+
+/** The single next step for each stage, so the owner taps one big button. */
+const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
+  new: "accepted",
+  accepted: "preparing",
+  preparing: "ready",
+  ready: "completed",
+};
+
 function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminOrder>) {
   const up = useServerFn(updateOrderStatus);
   const del = useServerFn(deleteOrder);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const setStatus = (id: string, status: OrderStatus) =>
+    runAction(() => up({ data: { id, status } }), { refresh, setMessage, setSaving, okText: `Order marked ${status}.` });
 
   const filtered = items.filter((o) => {
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
@@ -1066,43 +1209,90 @@ function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<A
 
   return (
     <Card>
-      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
+      <div className="space-y-3 mb-4">
         <h2 className="font-display text-3xl uppercase tracking-tighter">Orders</h2>
-        <div className="flex gap-2 items-center">
-          <TextInput placeholder="Search name, phone, id…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs">
-            {["all", "new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+        <TextInput placeholder="Search name, phone, id…" value={query} onChange={(e) => setQuery(e.target.value)} className="min-h-12" />
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {["all", ...ORDER_FLOW].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`shrink-0 min-h-10 px-3 text-[11px] font-bold uppercase tracking-tighter border ${statusFilter === s ? "bg-brand-black text-white border-brand-black" : "border-brand-black/15 text-brand-black/60"}`}
+            >
+              {s}
+            </button>
+          ))}
         </div>
       </div>
       {filtered.length === 0 ? (
         <p className="text-brand-black/50 text-sm">No orders match.</p>
       ) : (
         <div className="space-y-3">
-          {filtered.map((o) => (
-            <div key={o.id} className="border border-brand-black/10 p-4">
-              <div className="grid md:grid-cols-[1fr_auto] gap-3">
-                <div>
-                  <div className="font-bold">{o.customerName} · {o.customerPhone}</div>
-                  <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()} · #{o.id.slice(0, 8)}</div>
-                  <div className="mt-2 font-display text-3xl text-brand-red">${o.total.toFixed(2)}</div>
-                  {o.items.length > 0 && (
-                    <ul className="mt-2 text-xs text-brand-black/70 space-y-0.5">
-                      {o.items.map((li, idx) => (
-                        <li key={idx}>{li.quantity}× {li.name}{li.variantName ? ` (${li.variantName})` : ""}{li.addons.length > 0 ? ` + ${li.addons.map((a) => a.name).join(", ")}` : ""} — ${li.lineTotal.toFixed(2)}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {o.notes && <div className="mt-2 text-xs italic text-brand-black/50">Note: {o.notes}</div>}
+          {filtered.map((o) => {
+            const next = NEXT_STATUS[o.status as OrderStatus];
+            return (
+              <div key={o.id} className="border border-brand-black/10 p-4 space-y-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{o.customerName}</div>
+                    <a href={`tel:${o.customerPhone}`} className="text-sm text-brand-red font-bold underline">{o.customerPhone}</a>
+                    <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()} · #{o.id.slice(0, 8)}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className={`inline-block px-2 py-1 text-[10px] font-bold uppercase ${STATUS_STYLE[o.status] ?? "bg-brand-black text-white"}`}>{o.status}</span>
+                    <div className="font-display text-3xl text-brand-red leading-none mt-1">${o.total.toFixed(2)}</div>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 items-end self-start">
+
+                {o.items.length > 0 && (
+                  <ul className="text-sm text-brand-black/80 space-y-0.5">
+                    {o.items.map((li, idx) => (
+                      <li key={idx}>
+                        <span className="font-bold">{li.quantity}×</span> {li.name}
+                        {li.variantName ? ` (${li.variantName})` : ""}
+                        {li.addons.length > 0 ? ` + ${li.addons.map((a) => a.name).join(", ")}` : ""}
+                        {li.notes ? <em className="text-brand-black/50"> — {li.notes}</em> : null}
+                        {" "}— ${li.lineTotal.toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {o.notes && (
+                  <div className="bg-brand-gold/15 p-2 text-sm">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50 block">Address / notes</span>
+                    {o.notes}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {next && (
+                    <button
+                      onClick={() => setStatus(o.id, next)}
+                      disabled={saving}
+                      className="flex-1 min-w-[9rem] min-h-12 bg-brand-red text-white font-bold uppercase tracking-tighter text-xs disabled:opacity-50"
+                    >
+                      {saving ? "Saving…" : `Mark ${next}`}
+                    </button>
+                  )}
+                  {o.status !== "cancelled" && o.status !== "completed" && (
+                    <button
+                      onClick={() => setStatus(o.id, "cancelled")}
+                      disabled={saving}
+                      className="min-h-12 px-4 border border-brand-black/15 font-bold uppercase tracking-tighter text-xs disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                <Advanced title="Change stage manually / delete">
                   <select
                     value={o.status}
-                    onChange={(e) => runAction(() => up({ data: { id: o.id, status: e.target.value as "new" | "preparing" | "ready" | "completed" | "cancelled" } }), { refresh, setMessage, setSaving, okText: "Status updated." })}
+                    onChange={(e) => setStatus(o.id, e.target.value as OrderStatus)}
                     disabled={saving}
-                    className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs"
+                    className="w-full min-h-12 border border-brand-black/10 px-3 font-bold uppercase text-xs"
                   >
-                    {["new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+                    {ORDER_FLOW.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <button
                     onClick={() => {
@@ -1110,14 +1300,14 @@ function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<A
                       runAction(() => del({ data: { id: o.id } }), { refresh, setMessage, setSaving, okText: "Order deleted." });
                     }}
                     disabled={saving}
-                    className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold uppercase inline-flex items-center gap-1 disabled:opacity-50"
+                    className="w-full min-h-11 bg-red-600 text-white text-[11px] font-bold uppercase inline-flex items-center justify-center gap-1 disabled:opacity-50"
                   >
-                    <Trash2 className="size-3" /> Delete
+                    <Trash2 className="size-4" /> Delete order
                   </button>
-                </div>
+                </Advanced>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>
@@ -1131,41 +1321,76 @@ function SettingsTab({ settings, refresh, setMessage, saving, setSaving }: { set
   const [draft, setDraft] = useState(settings);
   useEffect(() => setDraft(settings), [settings]);
 
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
   return (
     <Card>
       <form onSubmit={async (e) => { e.preventDefault(); await runAction(() => up({ data: draft }), { refresh, setMessage, setSaving, okText: "Settings saved." }); }} className="space-y-4 max-w-3xl">
         <h2 className="font-display text-3xl uppercase tracking-tighter">Business Settings</h2>
+
+        {/* Shop status + announcement first — the two things owners change most */}
+        <div className="border border-brand-black/10 p-3 space-y-3">
+          <label className="flex items-center gap-3 text-sm font-bold">
+            <input type="checkbox" className="size-5" checked={draft.isOpen} onChange={(e) => setDraft({ ...draft, isOpen: e.target.checked })} />
+            Restaurant is open for orders
+          </label>
+          <Field label="Message shown when closed">
+            <TextInput value={draft.closedMessage} onChange={(e) => setDraft({ ...draft, closedMessage: e.target.value })} placeholder="We are closed. Please order after 5pm." />
+          </Field>
+          <label className="flex items-center gap-3 text-sm font-bold">
+            <input type="checkbox" className="size-5" checked={draft.announcementActive} onChange={(e) => setDraft({ ...draft, announcementActive: e.target.checked })} />
+            Show announcement bar on the website
+          </label>
+          <Field label="Announcement / notice">
+            <TextInput value={draft.announcement} onChange={(e) => setDraft({ ...draft, announcement: e.target.value })} placeholder="Free delivery on orders over 1500" />
+          </Field>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-3">
           <Field label="Restaurant Name"><TextInput value={draft.restaurantName} onChange={(e) => setDraft({ ...draft, restaurantName: e.target.value })} /></Field>
-          <Field label="WhatsApp Number (E.164)"><TextInput value={draft.whatsappNumber} onChange={(e) => setDraft({ ...draft, whatsappNumber: e.target.value })} placeholder="923017160216" /></Field>
-          <Field label="Phone"><TextInput value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /></Field>
+          <Field label="WhatsApp Number (E.164)"><TextInput inputMode="numeric" value={draft.whatsappNumber} onChange={(e) => setDraft({ ...draft, whatsappNumber: e.target.value })} placeholder="923017160216" /></Field>
+          <Field label="Phone"><TextInput inputMode="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /></Field>
+          <Field label="Second phone (optional)"><TextInput inputMode="tel" value={draft.phoneSecondary} onChange={(e) => setDraft({ ...draft, phoneSecondary: e.target.value })} /></Field>
           <Field label="Email"><TextInput type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field>
         </div>
         <Field label="Address"><TextInput value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} /></Field>
-        <Field label="Google Maps URL"><TextInput value={draft.mapsUrl} onChange={(e) => setDraft({ ...draft, mapsUrl: e.target.value })} /></Field>
-        <Field label="Logo"><ImageUploader value={draft.logoKey} onChange={(v) => setDraft({ ...draft, logoKey: v })} setMessage={setMessage} /></Field>
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Delivery Charges"><TextInput type="number" step="0.01" value={String(draft.deliveryCharges)} onChange={(e) => setDraft({ ...draft, deliveryCharges: Number(e.target.value) })} /></Field>
-          <Field label="Minimum Order"><TextInput type="number" step="0.01" value={String(draft.minOrder)} onChange={(e) => setDraft({ ...draft, minOrder: Number(e.target.value) })} /></Field>
-        </div>
         <div className="grid md:grid-cols-3 gap-3">
-          <Field label="Instagram"><TextInput value={draft.social.instagram ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, instagram: e.target.value } })} /></Field>
-          <Field label="Facebook"><TextInput value={draft.social.facebook ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, facebook: e.target.value } })} /></Field>
-          <Field label="TikTok"><TextInput value={draft.social.tiktok ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, tiktok: e.target.value } })} /></Field>
+          <Field label="Delivery Charges"><TextInput type="number" inputMode="decimal" step="0.01" value={String(draft.deliveryCharges)} onChange={(e) => setDraft({ ...draft, deliveryCharges: Number(e.target.value) })} /></Field>
+          <Field label="Minimum Order"><TextInput type="number" inputMode="decimal" step="0.01" value={String(draft.minOrder)} onChange={(e) => setDraft({ ...draft, minOrder: Number(e.target.value) })} /></Field>
+          <Field label="Delivery radius (km)"><TextInput type="number" inputMode="decimal" step="0.5" value={String(draft.deliveryRadiusKm)} onChange={(e) => setDraft({ ...draft, deliveryRadiusKm: Number(e.target.value) })} /></Field>
         </div>
+
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-brand-black/50 mb-2">Opening Hours</div>
           {draft.hours.map((h, idx) => (
             <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-2">
-              <TextInput placeholder="Day" value={h.day} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, day: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
-              <TextInput placeholder="Open" value={h.open} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, open: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
-              <TextInput placeholder="Close" value={h.close} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, close: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
-              <button type="button" onClick={() => setDraft({ ...draft, hours: draft.hours.filter((_, i) => i !== idx) })} className="px-2 bg-red-600 text-white"><Trash2 className="size-3" /></button>
+              <select
+                value={h.day}
+                onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, day: e.target.value }; setDraft({ ...draft, hours: copy }); }}
+                className="border border-brand-black/10 p-3 text-sm"
+              >
+                <option value="">Day…</option>
+                {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <TextInput type="time" value={h.open} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, open: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
+              <TextInput type="time" value={h.close} onChange={(e) => { const copy = [...draft.hours]; copy[idx] = { ...h, close: e.target.value }; setDraft({ ...draft, hours: copy }); }} />
+              <button type="button" onClick={() => setDraft({ ...draft, hours: draft.hours.filter((_, i) => i !== idx) })} className="px-3 bg-red-600 text-white"><Trash2 className="size-4" /></button>
             </div>
           ))}
-          <button type="button" onClick={() => setDraft({ ...draft, hours: [...draft.hours, { day: "", open: "", close: "" }] })} className="text-xs font-bold uppercase border border-brand-black/10 px-3 py-1 inline-flex items-center gap-1"><Plus className="size-3" /> Add hours row</button>
+          <button type="button" onClick={() => setDraft({ ...draft, hours: [...draft.hours, { day: "", open: "", close: "" }] })} className="min-h-11 text-xs font-bold uppercase border border-brand-black/10 px-3 inline-flex items-center gap-1"><Plus className="size-4" /> Add hours row</button>
         </div>
-        <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save Settings</Btn>
+
+        <Advanced title="Logo, map &amp; social links">
+          <Field label="Logo"><ImageUploader value={draft.logoKey} onChange={(v) => setDraft({ ...draft, logoKey: v })} setMessage={setMessage} /></Field>
+          <Field label="Google Maps URL"><TextInput value={draft.mapsUrl} onChange={(e) => setDraft({ ...draft, mapsUrl: e.target.value })} /></Field>
+          <div className="grid md:grid-cols-3 gap-3">
+            <Field label="Instagram"><TextInput value={draft.social.instagram ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, instagram: e.target.value } })} /></Field>
+            <Field label="Facebook"><TextInput value={draft.social.facebook ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, facebook: e.target.value } })} /></Field>
+            <Field label="TikTok"><TextInput value={draft.social.tiktok ?? ""} onChange={(e) => setDraft({ ...draft, social: { ...draft.social, tiktok: e.target.value } })} /></Field>
+          </div>
+        </Advanced>
+
+        <Btn disabled={saving} className="w-full justify-center min-h-12">{saving ? <><Loader2 className="size-4 animate-spin" /> Saving…</> : <><Save className="size-4" /> Save Settings</>}</Btn>
       </form>
     </Card>
   );

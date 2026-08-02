@@ -17,15 +17,21 @@ export type Database = {
       business_settings: {
         Row: {
           address: string
+          announcement: string
+          announcement_active: boolean
+          closed_message: string
           created_at: string
           delivery_charges: number
+          delivery_radius_km: number
           email: string
           hours: Json
           id: string
+          is_open: boolean
           logo_key: string
           maps_url: string
           min_order: number
           phone: string
+          phone_secondary: string
           restaurant_name: string
           social: Json
           updated_at: string
@@ -33,15 +39,21 @@ export type Database = {
         }
         Insert: {
           address?: string
+          announcement?: string
+          announcement_active?: boolean
+          closed_message?: string
           created_at?: string
           delivery_charges?: number
+          delivery_radius_km?: number
           email?: string
           hours?: Json
           id?: string
+          is_open?: boolean
           logo_key?: string
           maps_url?: string
           min_order?: number
           phone?: string
+          phone_secondary?: string
           restaurant_name?: string
           social?: Json
           updated_at?: string
@@ -49,15 +61,21 @@ export type Database = {
         }
         Update: {
           address?: string
+          announcement?: string
+          announcement_active?: boolean
+          closed_message?: string
           created_at?: string
           delivery_charges?: number
+          delivery_radius_km?: number
           email?: string
           hours?: Json
           id?: string
+          is_open?: boolean
           logo_key?: string
           maps_url?: string
           min_order?: number
           phone?: string
+          phone_secondary?: string
           restaurant_name?: string
           social?: Json
           updated_at?: string
@@ -73,7 +91,9 @@ export type Database = {
           default_product_type: string
           display_order: number
           id: string
+          meal_upgrade_default: boolean
           name: string
+          quick_add: boolean
           slug: string
           updated_at: string
           variant_label: string
@@ -85,7 +105,9 @@ export type Database = {
           default_product_type?: string
           display_order?: number
           id?: string
+          meal_upgrade_default?: boolean
           name: string
+          quick_add?: boolean
           slug: string
           updated_at?: string
           variant_label?: string
@@ -97,7 +119,9 @@ export type Database = {
           default_product_type?: string
           display_order?: number
           id?: string
+          meal_upgrade_default?: boolean
           name?: string
+          quick_add?: boolean
           slug?: string
           updated_at?: string
           variant_label?: string

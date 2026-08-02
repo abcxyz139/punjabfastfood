@@ -34,9 +34,18 @@ export const MenuItemInputSchema = z.object({
 
 
 
+export const ORDER_STATUSES = [
+  "new",
+  "accepted",
+  "preparing",
+  "ready",
+  "completed",
+  "cancelled",
+] as const;
+
 export const OrderStatusInputSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["new", "preparing", "ready", "completed", "cancelled"]),
+  status: z.enum(ORDER_STATUSES),
 });
 
 export const CustomerOrderInputSchema = z.object({
@@ -67,6 +76,10 @@ export const CategoryInputSchema = z.object({
   defaultProductType: ProductTypeSchema.default("simple"),
   variantLabel: z.string().trim().min(1).max(60).default("Choose an option"),
   addonLabel: z.string().trim().min(1).max(60).default("Add-ons"),
+  /** One-tap ordering for this category (drinks, desserts…). */
+  quickAdd: z.boolean().default(false),
+  /** Pre-enable "Complete your meal" upsells for new products here. */
+  mealUpgradeDefault: z.boolean().default(false),
 });
 
 
@@ -130,6 +143,7 @@ export const BusinessSettingsInputSchema = z.object({
   restaurantName: z.string().trim().min(1).max(120),
   logoKey: z.string().trim().max(500).default(""),
   phone: z.string().trim().max(40).default(""),
+  phoneSecondary: z.string().trim().max(40).default(""),
   whatsappNumber: z.string().trim().min(5).max(30),
   email: z.string().trim().max(120).default(""),
   address: z.string().trim().max(300).default(""),
@@ -139,6 +153,11 @@ export const BusinessSettingsInputSchema = z.object({
     .default([]),
   deliveryCharges: z.number().min(0).max(9999).default(0),
   minOrder: z.number().min(0).max(9999).default(0),
+  deliveryRadiusKm: z.number().min(0).max(500).default(0),
+  isOpen: z.boolean().default(true),
+  closedMessage: z.string().trim().max(300).default(""),
+  announcement: z.string().trim().max(300).default(""),
+  announcementActive: z.boolean().default(false),
   social: z
     .object({
       instagram: z.string().max(200).optional(),

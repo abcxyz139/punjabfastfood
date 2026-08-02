@@ -8,6 +8,11 @@ export type PublicSettings = {
   whatsappNumber: string;
   deliveryCharges: number;
   minOrder: number;
+  /** Owner-controlled Open/Closed switch from Admin → Settings. */
+  isOpen: boolean;
+  closedMessage: string;
+  /** Announcement bar text; empty when the owner has it switched off. */
+  announcement: string;
 };
 
 function publicClient() {
@@ -23,7 +28,9 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
     const supabase = publicClient();
     const { data, error } = await supabase
       .from("business_settings")
-      .select("restaurant_name, whatsapp_number, delivery_charges, min_order")
+      .select(
+        "restaurant_name, whatsapp_number, delivery_charges, min_order, is_open, closed_message, announcement, announcement_active",
+      )
       .eq("id", "default")
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -32,6 +39,9 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
       whatsappNumber: data?.whatsapp_number ?? "923017160216",
       deliveryCharges: Number(data?.delivery_charges ?? 2.5),
       minOrder: Number(data?.min_order ?? 0),
+      isOpen: data?.is_open ?? true,
+      closedMessage: data?.closed_message ?? "",
+      announcement: data?.announcement_active ? (data?.announcement ?? "") : "",
     };
   },
 );

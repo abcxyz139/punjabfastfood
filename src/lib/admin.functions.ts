@@ -165,6 +165,8 @@ export const upsertCategory = createServerFn({ method: "POST" })
       default_product_type: data.defaultProductType,
       variant_label: data.variantLabel,
       addon_label: data.addonLabel,
+      quick_add: data.quickAdd,
+      meal_upgrade_default: data.mealUpgradeDefault,
     };
 
     const q = data.id
@@ -377,6 +379,7 @@ export const updateBusinessSettings = createServerFn({ method: "POST" })
       restaurant_name: data.restaurantName,
       logo_key: data.logoKey,
       phone: data.phone,
+      phone_secondary: data.phoneSecondary,
       whatsapp_number: data.whatsappNumber,
       email: data.email,
       address: data.address,
@@ -384,6 +387,11 @@ export const updateBusinessSettings = createServerFn({ method: "POST" })
       hours: data.hours,
       delivery_charges: data.deliveryCharges,
       min_order: data.minOrder,
+      delivery_radius_km: data.deliveryRadiusKm,
+      is_open: data.isOpen,
+      closed_message: data.closedMessage,
+      announcement: data.announcement,
+      announcement_active: data.announcementActive,
       social: data.social,
     });
     if (error) throw new Error(error.message);
