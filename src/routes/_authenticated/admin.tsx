@@ -104,14 +104,29 @@ function AdminPage() {
     navigate({ to: "/auth", replace: true });
   };
 
+  const [tab, setTab] = useState("dashboard");
+
+  const toggleOpen = async () => {
+    if (!snapshot) return;
+    const next = !snapshot.settings.isOpen;
+    await runAction(() => saveSettings({ data: { ...snapshot.settings, isOpen: next } }), {
+      refresh,
+      setMessage,
+      setSaving,
+      okText: next ? "Restaurant is now OPEN." : "Restaurant is now CLOSED.",
+    });
+  };
+
   const stats = useMemo(() => {
-    const menuItems = snapshot?.menuItems ?? [];
     const orders = snapshot?.orders ?? [];
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const today = orders.filter((o) => new Date(o.createdAt) >= startOfToday);
     return {
-      active: menuItems.filter((i) => i.active).length,
-      featured: menuItems.filter((i) => i.featured).length,
-      openOrders: orders.filter((o) => ["new", "preparing", "ready"].includes(o.status)).length,
-      revenue: orders.reduce((s, o) => s + o.total, 0),
+      todayOrders: today.length,
+      todayRevenue: today.reduce((s, o) => s + o.total, 0),
+      newOrders: orders.filter((o) => o.status === "new").length,
+      preparing: orders.filter((o) => ["accepted", "preparing", "ready"].includes(o.status)).length,
     };
   }, [snapshot]);
 
