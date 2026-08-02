@@ -8,8 +8,8 @@ import { getStorefrontMarketing, quoteCart } from "@/lib/marketing.functions";
 import type { CartQuote, Promotion, PromotionBadge } from "@/lib/marketing.types";
 import { promotionLabel, remainingStock, scheduleLabel } from "@/lib/marketing.types";
 import type { CartEntry } from "@/lib/menu.types";
+import { formatPrice as money } from "@/lib/money";
 
-const money = (n: number) => `$${n.toFixed(2)}`;
 
 /* --------------------------------- Hooks --------------------------------- */
 

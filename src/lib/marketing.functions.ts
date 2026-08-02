@@ -1,33 +1,25 @@
+// Thin server-function wrappers only. Runtime helpers live in *.server.ts and
+// schemas in *.schemas.ts so the server-fn split can never strip them.
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
-import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
 import {
   applyPromotions,
   badgeMap,
   fetchPromotions,
   loadItemMeta,
-  loadMarketingAnalytics,
-  type EngineLine,
 } from "./marketing.server";
+import { adminSnapshot, buildLines } from "./marketing-lines.server";
+import { publicClient, type CloudClient } from "./supabase-public.server";
+import {
+  PromotionIdSchema,
+  PromotionPreviewSchema,
+  PromotionSlugSchema,
+  QuoteCartSchema,
+} from "./cart.schemas";
 import type { CartQuote, Promotion, StorefrontMarketing } from "./marketing.types";
 import { promotionRunning } from "./marketing.types";
 import { requireAdmin } from "./admin.server";
 import { PromotionInputSchema } from "./admin.schemas";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-function publicClient() {
-  return createClient<Database>(process.env["SUPABASE_URL"]!, process.env["SUPABASE_PUBLISHABLE_KEY"]!, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
-}
-
-const CartLineSchema = z.object({
-  menuItemId: z.string().uuid(),
-  variantId: z.string().uuid().nullable().optional(),
-  addonIds: z.array(z.string().uuid()).max(20).default([]),
-  quantity: z.number().int().min(1).max(50).default(1),
-});
 
 /* ------------------------------ Storefront ------------------------------ */
 
@@ -82,14 +74,7 @@ export const getStorefrontMarketing = createServerFn({ method: "GET" }).handler(
  * every price, discount and reward is computed here.
  */
 export const quoteCart = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
-    z
-      .object({
-        items: z.array(CartLineSchema).max(30).default([]),
-        userId: z.string().uuid().nullable().optional(),
-      })
-      .parse(input),
-  )
+  .inputValidator((input: unknown) => QuoteCartSchema.parse(input))
   .handler(async ({ data }): Promise<CartQuote> => {
     const supabase = publicClient();
     const settingsRes = await supabase
@@ -130,65 +115,9 @@ export const quoteCart = createServerFn({ method: "POST" })
     });
   });
 
-/** Shared line builder used by cart quotes (server-side prices only). */
-export async function buildLines(
-  supabase: ReturnType<typeof publicClient>,
-  items: Array<z.infer<typeof CartLineSchema>>,
-) {
-  const itemIds = Array.from(new Set(items.map((i) => i.menuItemId)));
-  const variantIds = Array.from(
-    new Set(items.map((i) => i.variantId).filter((v): v is string => Boolean(v))),
-  );
-  const addonIds = Array.from(new Set(items.flatMap((i) => i.addonIds ?? [])));
-
-  const [menuRes, variantRes, addonRes] = await Promise.all([
-    supabase.from("menu_items").select("id,name,price,category_id").in("id", itemIds),
-    variantIds.length
-      ? supabase.from("menu_item_variants").select("id,menu_item_id,price").in("id", variantIds)
-      : Promise.resolve({ data: [], error: null } as const),
-    addonIds.length
-      ? supabase.from("menu_item_addons").select("id,menu_item_id,price").in("id", addonIds)
-      : Promise.resolve({ data: [], error: null } as const),
-  ]);
-  if (menuRes.error) throw new Error(menuRes.error.message);
-  if (variantRes.error) throw new Error(variantRes.error.message);
-  if (addonRes.error) throw new Error(addonRes.error.message);
-
-  const menuById = new Map((menuRes.data ?? []).map((r) => [r.id, r]));
-  const variantById = new Map((variantRes.data ?? []).map((r) => [r.id, r]));
-  const addonById = new Map((addonRes.data ?? []).map((r) => [r.id, r]));
-
-  const lines: EngineLine[] = [];
-  for (const it of items) {
-    const row = menuById.get(it.menuItemId);
-    if (!row) continue;
-    let unitPrice = Number(row.price);
-    if (it.variantId) {
-      const v = variantById.get(it.variantId);
-      if (v) unitPrice = Number(v.price);
-    }
-    for (const aid of it.addonIds ?? []) {
-      const a = addonById.get(aid);
-      if (a) unitPrice += Number(a.price);
-    }
-    lines.push({
-      menuItemId: row.id,
-      variantId: it.variantId ?? null,
-      categoryId: row.category_id,
-      name: row.name,
-      unitPrice: Math.round(unitPrice * 100) / 100,
-      quantity: it.quantity,
-      lineTotal: Math.round(unitPrice * it.quantity * 100) / 100,
-    });
-  }
-
-  const subtotal = Math.round(lines.reduce((s, l) => s + l.lineTotal, 0) * 100) / 100;
-  return { lines, subtotal };
-}
-
 /** Single campaign page (SEO landing) — public, read only. */
 export const getPromotionBySlug = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => z.object({ slug: z.string().min(1).max(120) }).parse(input))
+  .inputValidator((input: unknown) => PromotionSlugSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = publicClient();
     const promotions = await fetchPromotions(supabase, { onlyActive: true });
@@ -228,12 +157,6 @@ export const getPromotionBySlug = createServerFn({ method: "GET" })
   });
 
 /* -------------------------------- Admin -------------------------------- */
-
-async function adminSnapshot(supabase: Parameters<typeof fetchPromotions>[0]) {
-  const promotions = await fetchPromotions(supabase);
-  const analytics = await loadMarketingAnalytics(supabase, promotions);
-  return { promotions, analytics };
-}
 
 export const getMarketingAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -321,7 +244,7 @@ export const upsertPromotion = createServerFn({ method: "POST" })
 
 export const deletePromotion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => PromotionIdSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
     const { error } = await context.supabase.from("promotions").delete().eq("id", data.id);
@@ -332,17 +255,14 @@ export const deletePromotion = createServerFn({ method: "POST" })
 /** Dry-run a campaign against a sample cart so the owner can sanity check rules. */
 export const previewPromotion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ promotionId: z.string().uuid(), items: z.array(CartLineSchema).min(1).max(20) }).parse(input),
-  )
+  .inputValidator((input: unknown) => PromotionPreviewSchema.parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
     const promotions = await fetchPromotions(context.supabase);
     const promotion = promotions.find((p) => p.id === data.promotionId);
     if (!promotion) throw new Error("Campaign not found.");
 
-    const supabase = context.supabase as unknown as ReturnType<typeof publicClient>;
-    const { lines, subtotal } = await buildLines(supabase, data.items);
+    const { lines, subtotal } = await buildLines(context.supabase as unknown as CloudClient, data.items);
     const referenced = new Set<string>(lines.map((l) => l.menuItemId));
     if (promotion.getMenuItemId) referenced.add(promotion.getMenuItemId);
     for (const i of promotion.items) referenced.add(i.menuItemId);

@@ -10,10 +10,12 @@ export const Route = createFileRoute("/auth")({
     meta: [
       { title: "Admin Sign In — Punjab Fast Food" },
       { name: "description", content: "Sign in to manage Punjab Fast Food menu items and orders." },
+      { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "Admin Sign In — Punjab Fast Food" },
       { property: "og:description", content: "Secure admin access for Punjab Fast Food." },
     ],
   }),
+
   component: AuthPage,
 });
 

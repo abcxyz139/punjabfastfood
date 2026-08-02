@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
+import { publicClient } from "./supabase-public.server";
 import type { PublicMenuSnapshot, PublicMenuItem, ProductType } from "./menu.types";
 
 export type PublicSettings = {
@@ -15,13 +14,6 @@ export type PublicSettings = {
   announcement: string;
 };
 
-function publicClient() {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
-}
 
 export const getPublicSettings = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicSettings> => {
