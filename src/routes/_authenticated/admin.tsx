@@ -1034,11 +1034,21 @@ function GalleryTab({ items, refresh, setMessage, saving, setSaving }: TabProps<
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
       <Card>
         <h2 className="font-display text-3xl uppercase tracking-tighter mb-4">Gallery</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {items.length === 0 && <p className="text-brand-black/50 text-sm col-span-full">No photos yet.</p>}
           {items.map((g) => (
-            <div key={g.id} className="relative group">
-              <img src={g.imageKey} alt={g.caption ?? ""} className="aspect-square object-cover w-full" />
-              <button onClick={() => runAction(() => del({ data: { id: g.id } }), { refresh, setMessage, setSaving })} className="absolute top-1 right-1 p-1 bg-red-600 text-white opacity-0 group-hover:opacity-100"><Trash2 className="size-3" /></button>
+            <div key={g.id} className="space-y-1">
+              <img src={g.imageKey} alt={g.caption ?? ""} className={`aspect-square object-cover w-full ${g.active ? "" : "opacity-40"}`} />
+              <div className="flex gap-1">
+                <button onClick={() => setDraft({ id: g.id, imageKey: g.imageKey, caption: g.caption ?? "", displayOrder: g.displayOrder, active: g.active })} className="flex-1 min-h-10 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
+                <button
+                  onClick={() => runAction(() => up({ data: { id: g.id, imageKey: g.imageKey, caption: g.caption, displayOrder: g.displayOrder, active: !g.active } }), { refresh, setMessage, setSaving, okText: g.active ? "Photo hidden." : "Photo shown." })}
+                  className="flex-1 min-h-10 text-[10px] font-bold uppercase border border-brand-black/10"
+                >
+                  {g.active ? "Hide" : "Show"}
+                </button>
+                <button onClick={() => runAction(() => del({ data: { id: g.id } }), { refresh, setMessage, setSaving })} className="min-h-10 px-2 bg-red-600 text-white"><Trash2 className="size-3" /></button>
+              </div>
             </div>
           ))}
         </div>
