@@ -34,9 +34,18 @@ export const MenuItemInputSchema = z.object({
 
 
 
+export const ORDER_STATUSES = [
+  "new",
+  "accepted",
+  "preparing",
+  "ready",
+  "completed",
+  "cancelled",
+] as const;
+
 export const OrderStatusInputSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["new", "preparing", "ready", "completed", "cancelled"]),
+  status: z.enum(ORDER_STATUSES),
 });
 
 export const CustomerOrderInputSchema = z.object({
