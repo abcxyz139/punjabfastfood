@@ -15,6 +15,8 @@ import { LoyaltySection, CartLoyalty, FavoriteButton } from "@/components/loyalt
 import { useMarketing, useCartQuote, OffersSection, PromoBadges, CartPromotions } from "@/components/marketing";
 import type { Promotion } from "@/lib/marketing.types";
 import type { CustomerOrderSummary } from "@/lib/loyalty.types";
+import { canonical } from "@/lib/site";
+
 
 
 // ---------- Restaurant defaults (overridden by business_settings at runtime) ----------

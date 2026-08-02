@@ -53,8 +53,10 @@ export const Route = createFileRoute("/_authenticated/admin")({
     meta: [
       { title: "Admin Panel — Punjab Fast Food" },
       { name: "description", content: "Secure admin dashboard for managing Punjab Fast Food." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
+
   component: AdminPage,
 });
 
