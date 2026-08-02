@@ -165,6 +165,8 @@ export const upsertCategory = createServerFn({ method: "POST" })
       default_product_type: data.defaultProductType,
       variant_label: data.variantLabel,
       addon_label: data.addonLabel,
+      quick_add: data.quickAdd,
+      meal_upgrade_default: data.mealUpgradeDefault,
     };
 
     const q = data.id
