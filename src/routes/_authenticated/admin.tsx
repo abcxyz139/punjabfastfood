@@ -867,7 +867,7 @@ function VariantsAddonsPanel({ item, snapshot, refresh, setMessage, setSaving }:
 function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminCategory>) {
   const up = useServerFn(upsertCategory);
   const del = useServerFn(deleteCategory);
-  const empty = { id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true, defaultProductType: "simple" as AdminCategory["defaultProductType"], variantLabel: "Choose an option", addonLabel: "Add-ons" };
+  const empty = { id: undefined as string | undefined, name: "", slug: "", displayOrder: 100, active: true, defaultProductType: "simple" as AdminCategory["defaultProductType"], variantLabel: "Choose an option", addonLabel: "Add-ons", quickAdd: true, mealUpgradeDefault: false };
   const [draft, setDraft] = useState(empty);
 
   const submit = async (e: FormEvent) => {
@@ -876,6 +876,18 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
     setDraft(empty);
   };
 
+  const editDraft = (c: AdminCategory) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    displayOrder: c.displayOrder,
+    active: c.active,
+    defaultProductType: c.defaultProductType,
+    variantLabel: c.variantLabel,
+    addonLabel: c.addonLabel,
+    quickAdd: c.quickAdd,
+    mealUpgradeDefault: c.mealUpgradeDefault,
+  });
 
   return (
     <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
@@ -883,14 +895,16 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
         <h2 className="font-display text-3xl uppercase tracking-tighter mb-4">Categories</h2>
         <div className="space-y-2">
           {items.map((c) => (
-            <div key={c.id} className="flex justify-between items-center py-2 border-b border-brand-black/10">
-              <div>
-                <div className="font-bold">{c.name}</div>
-                <div className="font-mono text-[10px] text-brand-black/40">{c.slug} · order {c.displayOrder} · {c.active ? "active" : "hidden"}</div>
+            <div key={c.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2 border-b border-brand-black/10">
+              <div className="min-w-0">
+                <div className="font-bold truncate">{c.name}</div>
+                <div className="font-mono text-[10px] text-brand-black/40 truncate">
+                  order {c.displayOrder} · {c.active ? "visible" : "hidden"} · {c.quickAdd ? "1-tap add" : "opens options"}
+                </div>
               </div>
-              <div className="flex gap-1">
-                <button onClick={() => setDraft({ id: c.id, name: c.name, slug: c.slug, displayOrder: c.displayOrder, active: c.active, defaultProductType: c.defaultProductType, variantLabel: c.variantLabel, addonLabel: c.addonLabel })} className="px-2 py-1 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
-                <button onClick={() => runAction(() => del({ data: { id: c.id } }), { refresh, setMessage, setSaving })} className="px-2 py-1 bg-red-600 text-white"><Trash2 className="size-3" /></button>
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => setDraft(editDraft(c))} className="min-h-10 px-3 text-[10px] font-bold uppercase border border-brand-black/10">Edit</button>
+                <button onClick={() => runAction(() => del({ data: { id: c.id } }), { refresh, setMessage, setSaving })} className="min-h-10 px-3 bg-red-600 text-white"><Trash2 className="size-3" /></button>
               </div>
             </div>
           ))}
@@ -899,23 +913,33 @@ function CategoriesTab({ items, refresh, setMessage, saving, setSaving }: TabPro
       <Card>
         <form onSubmit={submit} className="space-y-3">
           <h3 className="font-display text-2xl uppercase tracking-tighter">{draft.id ? "Edit" : "New"} Category</h3>
-          <Field label="Name"><TextInput required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value, slug: draft.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} /></Field>
-          <Field label="Slug"><TextInput required value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} /></Field>
-          <Field label="Order"><TextInput type="number" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
-          <Field label="Default product type">
-            <select value={draft.defaultProductType} onChange={(e) => setDraft({ ...draft, defaultProductType: e.target.value as AdminCategory["defaultProductType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
-              <option value="simple">Simple</option>
-              <option value="variable">Variable</option>
-              <option value="combo">Combo / deal</option>
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Variant label"><TextInput value={draft.variantLabel} onChange={(e) => setDraft({ ...draft, variantLabel: e.target.value })} /></Field>
-            <Field label="Add-on label"><TextInput value={draft.addonLabel} onChange={(e) => setDraft({ ...draft, addonLabel: e.target.value })} /></Field>
-          </div>
-          <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Active</label>
+          <Field label="Name"><TextInput required className="min-h-12" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value, slug: draft.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-") })} /></Field>
+          <Field label="Order on website"><TextInput type="number" inputMode="numeric" className="min-h-12" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
+          <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Show this category</label>
 
-          <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save</Btn>
+          {/* Defaults new products in this category inherit */}
+          <div className="border border-brand-black/10 p-3 space-y-3">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50">Defaults for new products here</div>
+            <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.quickAdd} onChange={(e) => setDraft({ ...draft, quickAdd: e.target.checked })} /> One-tap add to cart (drinks, desserts)</label>
+            <label className="flex items-center gap-3 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.mealUpgradeDefault} onChange={(e) => setDraft({ ...draft, mealUpgradeDefault: e.target.checked })} /> Offer meal upgrade suggestions</label>
+          </div>
+
+          <Advanced title="Advanced: product type &amp; labels">
+            <Field label="Slug (website address)"><TextInput required value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} /></Field>
+            <Field label="Default product type">
+              <select value={draft.defaultProductType} onChange={(e) => setDraft({ ...draft, defaultProductType: e.target.value as AdminCategory["defaultProductType"] })} className="w-full border border-brand-black/10 p-3 text-sm">
+                <option value="simple">Simple</option>
+                <option value="variable">Variable</option>
+                <option value="combo">Combo / deal</option>
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Variant label"><TextInput value={draft.variantLabel} onChange={(e) => setDraft({ ...draft, variantLabel: e.target.value })} /></Field>
+              <Field label="Add-on label"><TextInput value={draft.addonLabel} onChange={(e) => setDraft({ ...draft, addonLabel: e.target.value })} /></Field>
+            </div>
+          </Advanced>
+
+          <Btn disabled={saving} className="w-full justify-center min-h-12">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save Category</Btn>
         </form>
       </Card>
     </div>
