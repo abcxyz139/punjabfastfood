@@ -60,6 +60,21 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 type Snapshot = AdminDashboardSnapshot;
 
+/** Tab order = how often the owner needs each screen. */
+const ADMIN_TABS = [
+  { value: "dashboard", label: "Dashboard" },
+  { value: "orders", label: "Orders" },
+  { value: "menu", label: "Products" },
+  { value: "categories", label: "Categories" },
+  { value: "offers", label: "Offers" },
+  { value: "hero", label: "Homepage" },
+  { value: "gallery", label: "Photos" },
+  { value: "testimonials", label: "Reviews" },
+  { value: "marketing", label: "Marketing" },
+  { value: "loyalty", label: "Loyalty" },
+  { value: "settings", label: "Settings" },
+] as const;
+
 function AdminPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
