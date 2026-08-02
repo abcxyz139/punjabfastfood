@@ -28,7 +28,6 @@ import {
   upsertVariant,
 } from "@/lib/admin.functions";
 import type {
-  AdminAddon,
   AdminBusinessSettings,
   AdminCategory,
   AdminDashboardSnapshot,
@@ -38,7 +37,6 @@ import type {
   AdminOffer,
   AdminOrder,
   AdminTestimonial,
-  AdminVariant,
 } from "@/lib/admin.types";
 import { BADGE_OPTIONS } from "@/lib/menu.types";
 import { LoyaltyTab } from "@/components/admin-loyalty";
