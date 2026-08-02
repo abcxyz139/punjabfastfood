@@ -109,7 +109,7 @@ export async function loadAdminDashboard(
       .limit(50),
     supabase
       .from("categories")
-      .select("id,name,slug,display_order,active,default_product_type,variant_label,addon_label")
+      .select("id,name,slug,display_order,active,default_product_type,variant_label,addon_label,quick_add,meal_upgrade_default")
       .order("display_order", { ascending: true }),
 
     supabase
