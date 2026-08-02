@@ -1055,11 +1055,12 @@ function GalleryTab({ items, refresh, setMessage, saving, setSaving }: TabProps<
       </Card>
       <Card>
         <form onSubmit={submit} className="space-y-3">
-          <h3 className="font-display text-2xl uppercase tracking-tighter">Add Image</h3>
+          <h3 className="font-display text-2xl uppercase tracking-tighter">{draft.id ? "Edit" : "Add"} Photo</h3>
           <Field label="Image"><ImageUploader value={draft.imageKey} onChange={(v) => setDraft({ ...draft, imageKey: v })} setMessage={setMessage} /></Field>
           <Field label="Caption"><TextInput value={draft.caption} onChange={(e) => setDraft({ ...draft, caption: e.target.value })} /></Field>
           <Field label="Order"><TextInput type="number" value={String(draft.displayOrder)} onChange={(e) => setDraft({ ...draft, displayOrder: Number(e.target.value) })} /></Field>
-          <Btn disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Add</Btn>
+          <label className="flex items-center gap-2 text-sm font-bold"><input type="checkbox" className="size-5" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} /> Show on website</label>
+          <Btn disabled={saving} className="w-full justify-center min-h-12">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {draft.id ? "Save photo" : "Add photo"}</Btn>
         </form>
       </Card>
     </div>
