@@ -1107,11 +1107,34 @@ function TestimonialsTab({ items, refresh, setMessage, saving, setSaving }: TabP
 
 /* --------------------------------- Orders --------------------------------- */
 
+const ORDER_FLOW = ["new", "accepted", "preparing", "ready", "completed", "cancelled"] as const;
+type OrderStatus = (typeof ORDER_FLOW)[number];
+
+const STATUS_STYLE: Record<string, string> = {
+  new: "bg-brand-gold text-brand-black",
+  accepted: "bg-brand-orange text-white",
+  preparing: "bg-brand-orange text-white",
+  ready: "bg-blue-500 text-white",
+  completed: "bg-green-600 text-white",
+  cancelled: "bg-red-600 text-white",
+};
+
+/** The single next step for each stage, so the owner taps one big button. */
+const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
+  new: "accepted",
+  accepted: "preparing",
+  preparing: "ready",
+  ready: "completed",
+};
+
 function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<AdminOrder>) {
   const up = useServerFn(updateOrderStatus);
   const del = useServerFn(deleteOrder);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const setStatus = (id: string, status: OrderStatus) =>
+    runAction(() => up({ data: { id, status } }), { refresh, setMessage, setSaving, okText: `Order marked ${status}.` });
 
   const filtered = items.filter((o) => {
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
@@ -1126,43 +1149,90 @@ function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<A
 
   return (
     <Card>
-      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
+      <div className="space-y-3 mb-4">
         <h2 className="font-display text-3xl uppercase tracking-tighter">Orders</h2>
-        <div className="flex gap-2 items-center">
-          <TextInput placeholder="Search name, phone, id…" value={query} onChange={(e) => setQuery(e.target.value)} className="w-56" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs">
-            {["all", "new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+        <TextInput placeholder="Search name, phone, id…" value={query} onChange={(e) => setQuery(e.target.value)} className="min-h-12" />
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {["all", ...ORDER_FLOW].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`shrink-0 min-h-10 px-3 text-[11px] font-bold uppercase tracking-tighter border ${statusFilter === s ? "bg-brand-black text-white border-brand-black" : "border-brand-black/15 text-brand-black/60"}`}
+            >
+              {s}
+            </button>
+          ))}
         </div>
       </div>
       {filtered.length === 0 ? (
         <p className="text-brand-black/50 text-sm">No orders match.</p>
       ) : (
         <div className="space-y-3">
-          {filtered.map((o) => (
-            <div key={o.id} className="border border-brand-black/10 p-4">
-              <div className="grid md:grid-cols-[1fr_auto] gap-3">
-                <div>
-                  <div className="font-bold">{o.customerName} · {o.customerPhone}</div>
-                  <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()} · #{o.id.slice(0, 8)}</div>
-                  <div className="mt-2 font-display text-3xl text-brand-red">${o.total.toFixed(2)}</div>
-                  {o.items.length > 0 && (
-                    <ul className="mt-2 text-xs text-brand-black/70 space-y-0.5">
-                      {o.items.map((li, idx) => (
-                        <li key={idx}>{li.quantity}× {li.name}{li.variantName ? ` (${li.variantName})` : ""}{li.addons.length > 0 ? ` + ${li.addons.map((a) => a.name).join(", ")}` : ""} — ${li.lineTotal.toFixed(2)}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {o.notes && <div className="mt-2 text-xs italic text-brand-black/50">Note: {o.notes}</div>}
+          {filtered.map((o) => {
+            const next = NEXT_STATUS[o.status as OrderStatus];
+            return (
+              <div key={o.id} className="border border-brand-black/10 p-4 space-y-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{o.customerName}</div>
+                    <a href={`tel:${o.customerPhone}`} className="text-sm text-brand-red font-bold underline">{o.customerPhone}</a>
+                    <div className="font-mono text-[10px] uppercase text-brand-black/40 mt-1">{new Date(o.createdAt).toLocaleString()} · #{o.id.slice(0, 8)}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className={`inline-block px-2 py-1 text-[10px] font-bold uppercase ${STATUS_STYLE[o.status] ?? "bg-brand-black text-white"}`}>{o.status}</span>
+                    <div className="font-display text-3xl text-brand-red leading-none mt-1">${o.total.toFixed(2)}</div>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 items-end self-start">
+
+                {o.items.length > 0 && (
+                  <ul className="text-sm text-brand-black/80 space-y-0.5">
+                    {o.items.map((li, idx) => (
+                      <li key={idx}>
+                        <span className="font-bold">{li.quantity}×</span> {li.name}
+                        {li.variantName ? ` (${li.variantName})` : ""}
+                        {li.addons.length > 0 ? ` + ${li.addons.map((a) => a.name).join(", ")}` : ""}
+                        {li.notes ? <em className="text-brand-black/50"> — {li.notes}</em> : null}
+                        {" "}— ${li.lineTotal.toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {o.notes && (
+                  <div className="bg-brand-gold/15 p-2 text-sm">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-brand-black/50 block">Address / notes</span>
+                    {o.notes}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {next && (
+                    <button
+                      onClick={() => setStatus(o.id, next)}
+                      disabled={saving}
+                      className="flex-1 min-w-[9rem] min-h-12 bg-brand-red text-white font-bold uppercase tracking-tighter text-xs disabled:opacity-50"
+                    >
+                      {saving ? "Saving…" : `Mark ${next}`}
+                    </button>
+                  )}
+                  {o.status !== "cancelled" && o.status !== "completed" && (
+                    <button
+                      onClick={() => setStatus(o.id, "cancelled")}
+                      disabled={saving}
+                      className="min-h-12 px-4 border border-brand-black/15 font-bold uppercase tracking-tighter text-xs disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                <Advanced title="Change stage manually / delete">
                   <select
                     value={o.status}
-                    onChange={(e) => runAction(() => up({ data: { id: o.id, status: e.target.value as "new" | "preparing" | "ready" | "completed" | "cancelled" } }), { refresh, setMessage, setSaving, okText: "Status updated." })}
+                    onChange={(e) => setStatus(o.id, e.target.value as OrderStatus)}
                     disabled={saving}
-                    className="border border-brand-black/10 px-3 py-2 font-bold uppercase text-xs"
+                    className="w-full min-h-12 border border-brand-black/10 px-3 font-bold uppercase text-xs"
                   >
-                    {["new", "preparing", "ready", "completed", "cancelled"].map((s) => <option key={s} value={s}>{s}</option>)}
+                    {ORDER_FLOW.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <button
                     onClick={() => {
@@ -1170,14 +1240,14 @@ function OrdersTab({ items, refresh, setMessage, saving, setSaving }: TabProps<A
                       runAction(() => del({ data: { id: o.id } }), { refresh, setMessage, setSaving, okText: "Order deleted." });
                     }}
                     disabled={saving}
-                    className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold uppercase inline-flex items-center gap-1 disabled:opacity-50"
+                    className="w-full min-h-11 bg-red-600 text-white text-[11px] font-bold uppercase inline-flex items-center justify-center gap-1 disabled:opacity-50"
                   >
-                    <Trash2 className="size-3" /> Delete
+                    <Trash2 className="size-4" /> Delete order
                   </button>
-                </div>
+                </Advanced>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>
