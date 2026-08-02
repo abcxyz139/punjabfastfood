@@ -16,6 +16,8 @@ import { useMarketing, useCartQuote, OffersSection, PromoBadges, CartPromotions 
 import type { Promotion } from "@/lib/marketing.types";
 import type { CustomerOrderSummary } from "@/lib/loyalty.types";
 import { canonical } from "@/lib/site";
+import { formatPrice } from "@/lib/money";
+
 
 
 
@@ -66,16 +68,8 @@ function OwnerNotices() {
   );
 }
 
-// Back-compat helpers used across static call sites — these use defaults; components
-// that need live settings use useSettings() + buildWaUrl() directly.
-const RESTAURANT_NAME = DEFAULT_RESTAURANT_NAME;
-const WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
-const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}`;
-const DELIVERY_CHARGES = DEFAULT_DELIVERY_CHARGES;
 
-function waUrl(text?: string) {
-  return text ? `${WHATSAPP_LINK}?text=${encodeURIComponent(text)}` : WHATSAPP_LINK;
-}
+
 
 function buildOrderMessage(
   items: CartEntry[],
@@ -126,9 +120,8 @@ function resolveImg(key: string) {
   return IMAGE_MAP[key] ?? imgBurger;
 }
 
-function formatPrice(n: number) {
-  return `$${n.toFixed(2)}`;
-}
+
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
