@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: AdminBusinessSettings = {
   restaurantName: "Punjab Fast Food",
   logoKey: "",
   phone: "",
+  phoneSecondary: "",
   whatsappNumber: "923017160216",
   email: "",
   address: "",
@@ -35,6 +36,11 @@ const DEFAULT_SETTINGS: AdminBusinessSettings = {
   hours: [],
   deliveryCharges: 0,
   minOrder: 0,
+  deliveryRadiusKm: 0,
+  isOpen: true,
+  closedMessage: "",
+  announcement: "",
+  announcementActive: false,
   social: {},
 };
 
