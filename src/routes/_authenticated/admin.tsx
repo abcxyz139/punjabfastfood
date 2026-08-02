@@ -628,11 +628,27 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
             <Field label="1. Product photo"><ImageUploader value={editing.imageKey ?? ""} onChange={(v) => setEditing({ ...editing, imageKey: v })} setMessage={setMessage} /></Field>
             <Field label="2. Product name"><TextInput value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required /></Field>
             <Field label="3. Category">
-              <select value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="w-full border border-brand-black/10 p-3 text-sm">
+              <select
+                value={editing.category ?? ""}
+                onChange={(e) => {
+                  const cat = snapshot.categories.find((c) => c.name === e.target.value);
+                  // New products inherit the category's defaults so owners rarely touch Advanced.
+                  const inherit = cat && !editing.id
+                    ? {
+                        productType: cat.defaultProductType,
+                        variantLabel: cat.variantLabel,
+                        addonLabel: cat.addonLabel,
+                        variantRequired: cat.quickAdd ? false : true,
+                      }
+                    : {};
+                  setEditing({ ...editing, category: e.target.value, ...inherit });
+                }}
+                className="w-full min-h-12 border border-brand-black/10 px-3 text-sm"
+              >
                 {snapshot.categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </Field>
-            <Field label="4. Price"><TextInput type="number" step="0.01" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
+            <Field label="4. Price"><TextInput type="number" inputMode="decimal" step="0.01" className="min-h-12" value={String(editing.price ?? 0)} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} /></Field>
             <Field label="Short description (one line customers can skim)">
               <TextArea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={2} required />
             </Field>
