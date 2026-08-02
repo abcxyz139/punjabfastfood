@@ -62,6 +62,10 @@ export type AdminCategory = {
   defaultProductType: ProductType;
   variantLabel: string;
   addonLabel: string;
+  /** One-tap ordering default for products in this category. */
+  quickAdd: boolean;
+  /** Pre-enable meal upgrade upsells for new products here. */
+  mealUpgradeDefault: boolean;
 };
 
 
