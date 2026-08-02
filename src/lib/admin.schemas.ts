@@ -143,6 +143,7 @@ export const BusinessSettingsInputSchema = z.object({
   restaurantName: z.string().trim().min(1).max(120),
   logoKey: z.string().trim().max(500).default(""),
   phone: z.string().trim().max(40).default(""),
+  phoneSecondary: z.string().trim().max(40).default(""),
   whatsappNumber: z.string().trim().min(5).max(30),
   email: z.string().trim().max(120).default(""),
   address: z.string().trim().max(300).default(""),
@@ -152,6 +153,11 @@ export const BusinessSettingsInputSchema = z.object({
     .default([]),
   deliveryCharges: z.number().min(0).max(9999).default(0),
   minOrder: z.number().min(0).max(9999).default(0),
+  deliveryRadiusKm: z.number().min(0).max(500).default(0),
+  isOpen: z.boolean().default(true),
+  closedMessage: z.string().trim().max(300).default(""),
+  announcement: z.string().trim().max(300).default(""),
+  announcementActive: z.boolean().default(false),
   social: z
     .object({
       instagram: z.string().max(200).optional(),
