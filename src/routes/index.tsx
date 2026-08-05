@@ -17,36 +17,28 @@ import type { Promotion } from "@/lib/marketing.types";
 import type { CustomerOrderSummary } from "@/lib/loyalty.types";
 import { canonical } from "@/lib/site";
 import { formatPrice } from "@/lib/money";
+import { resolveImg } from "@/lib/images";
+import {
+  CART_KEY,
+  PAST_KEY,
+  addEntry,
+  readCart,
+  removeCartEntry,
+  updateCartQty,
+  useCartState,
+  writeCart,
+} from "@/lib/cart.store";
+import { useMenuData, useSettings } from "@/lib/storefront.hooks";
+import { BADGE_STYLE, UpsellCard } from "@/components/product-detail";
+import heroSpice from "@/assets/hero-spice.jpg";
+import lifestyle from "@/assets/lifestyle.jpg";
 
 
 
-
-// ---------- Restaurant defaults (overridden by business_settings at runtime) ----------
-const DEFAULT_RESTAURANT_NAME = "Punjab Fast Food";
-const DEFAULT_WHATSAPP_NUMBER = "923017160216"; // international format, no + or spaces
-const DEFAULT_DELIVERY_CHARGES = 2.5;
 
 function buildWaUrl(number: string, text?: string) {
   const link = `https://wa.me/${number}`;
   return text ? `${link}?text=${encodeURIComponent(text)}` : link;
-}
-
-function useSettings() {
-  const fetchSettings = useServerFn(getPublicSettings);
-  const { data } = useQuery({
-    queryKey: ["public-settings"],
-    queryFn: () => fetchSettings(),
-    staleTime: 60_000,
-  });
-  return {
-    restaurantName: data?.restaurantName ?? DEFAULT_RESTAURANT_NAME,
-    whatsappNumber: data?.whatsappNumber ?? DEFAULT_WHATSAPP_NUMBER,
-    deliveryCharges: data?.deliveryCharges ?? DEFAULT_DELIVERY_CHARGES,
-    minOrder: data?.minOrder ?? 0,
-    isOpen: data?.isOpen ?? true,
-    closedMessage: data?.closedMessage ?? "",
-    announcement: data?.announcement ?? "",
-  };
 }
 
 /** Owner-controlled announcement + closed notice, driven from Admin → Settings. */
@@ -127,17 +119,6 @@ const STATS = [
   { num: "24h", label: "Marination Time" },
   { num: "100%", label: "Halal Certified" },
 ];
-
-// ---------- Menu data hook ----------
-
-function useMenuData() {
-  const fetchMenu = useServerFn(getPublicMenu);
-  return useQuery({
-    queryKey: ["public-menu"],
-    queryFn: () => fetchMenu(),
-    staleTime: 60_000,
-  });
-}
 
 // ---------- Page ----------
 
@@ -412,7 +393,6 @@ function Menu() {
   const [query, setQuery] = useState("");
   const [spiceOnly, setSpiceOnly] = useState(false);
   const [badgeFilter, setBadgeFilter] = useState<string | null>(null);
-  const [modalItem, setModalItem] = useState<PublicMenuItem | null>(null);
 
   const categories = useMemo(() => {
     const fromDb = (data?.categories ?? []).map((c) => c.name);
@@ -547,24 +527,13 @@ function Menu() {
         >
           <AnimatePresence mode="popLayout">
             {filtered.map((item, i) => (
-              <MenuCard key={item.id} item={item} index={i} promoBadges={badges} onOpenOptions={() => setModalItem(item)} />
+              <MenuCard key={item.id} item={item} index={i} promoBadges={badges} />
             ))}
           </AnimatePresence>
         </motion.div>
       )}
 
 
-      <AnimatePresence>
-        {modalItem && (
-          <OptionsModal
-            key={modalItem.id}
-            item={modalItem}
-            allItems={items}
-            onClose={() => setModalItem(null)}
-            onSwitchItem={(i) => setModalItem(i)}
-          />
-        )}
-      </AnimatePresence>
     </section>
   );
 }
