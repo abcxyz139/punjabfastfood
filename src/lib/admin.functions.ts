@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { loadAdminDashboard, requireAdmin } from "./admin.server";
+import { loadAdminDashboard, menuSlug, requireAdmin } from "./admin.server";
 import {
   MenuItemInputSchema,
   OrderStatusInputSchema,

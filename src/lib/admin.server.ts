@@ -291,3 +291,13 @@ export async function loadAdminDashboard(
       : DEFAULT_SETTINGS,
   };
 }
+
+/** Owner-friendly slug: falls back to the product name so the owner never has to think about URLs. */
+export function menuSlug(preferred: string, name: string): string {
+  const clean = (v: string) =>
+    v
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  return clean(preferred) || clean(name) || `item-${Date.now().toString(36)}`;
+}
