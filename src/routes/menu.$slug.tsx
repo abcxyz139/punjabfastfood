@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, ShoppingBag } from "lucide-react";
 import { ProductDetail } from "@/components/product-detail";
 import { useMenuData, useSettings } from "@/lib/storefront.hooks";
