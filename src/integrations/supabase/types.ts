@@ -515,6 +515,7 @@ export type Database = {
           display_order: number
           featured: boolean
           frequently_bought_ids: string[]
+          gallery_keys: string[]
           id: string
           image_key: string
           in_stock: boolean
@@ -527,11 +528,13 @@ export type Database = {
           product_type: string
           recommended_ids: string[]
           search_keywords: string[]
+          slug: string | null
           spice_level: number
           tag: string | null
           updated_at: string
           variant_label: string | null
           variant_required: boolean
+          video_url: string
         }
         Insert: {
           active?: boolean
@@ -547,6 +550,7 @@ export type Database = {
           display_order?: number
           featured?: boolean
           frequently_bought_ids?: string[]
+          gallery_keys?: string[]
           id?: string
           image_key?: string
           in_stock?: boolean
@@ -559,11 +563,13 @@ export type Database = {
           product_type?: string
           recommended_ids?: string[]
           search_keywords?: string[]
+          slug?: string | null
           spice_level?: number
           tag?: string | null
           updated_at?: string
           variant_label?: string | null
           variant_required?: boolean
+          video_url?: string
         }
         Update: {
           active?: boolean
@@ -579,6 +585,7 @@ export type Database = {
           display_order?: number
           featured?: boolean
           frequently_bought_ids?: string[]
+          gallery_keys?: string[]
           id?: string
           image_key?: string
           in_stock?: boolean
@@ -591,11 +598,13 @@ export type Database = {
           product_type?: string
           recommended_ids?: string[]
           search_keywords?: string[]
+          slug?: string | null
           spice_level?: number
           tag?: string | null
           updated_at?: string
           variant_label?: string | null
           variant_required?: boolean
+          video_url?: string
         }
         Relationships: [
           {
