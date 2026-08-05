@@ -9,6 +9,10 @@ export const MenuItemInputSchema = z.object({
   description: z.string().trim().min(5).max(240),
   price: z.number().min(0).max(999),
   imageKey: z.string().trim().min(1).max(500).default("burger"),
+  /** Blank means "generate it from the product name" on the server. */
+  slug: z.string().trim().max(80).regex(/^[a-z0-9-]*$/, "Use lowercase letters, numbers and dashes").default(""),
+  galleryKeys: z.array(z.string().trim().min(1).max(500)).max(6).default([]),
+  videoUrl: z.string().trim().max(500).default(""),
   tag: z.string().trim().max(24).nullable().optional(),
   active: z.boolean().default(true),
   featured: z.boolean().default(false),

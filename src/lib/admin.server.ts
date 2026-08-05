@@ -97,7 +97,7 @@ export async function loadAdminDashboard(
     supabase
       .from("menu_items")
       .select(
-        "id,name,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
+        "id,name,slug,gallery_keys,video_url,category,description,price,image_key,tag,active,featured,display_order,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
       )
       .order("display_order", { ascending: true }),
 
@@ -162,6 +162,9 @@ export async function loadAdminDashboard(
       description: item.description,
       price: Number(item.price),
       imageKey: item.image_key,
+      slug: item.slug ?? "",
+      galleryKeys: item.gallery_keys ?? [],
+      videoUrl: item.video_url ?? "",
       tag: item.tag,
       active: item.active,
       featured: item.featured,
@@ -287,4 +290,14 @@ export async function loadAdminDashboard(
         }
       : DEFAULT_SETTINGS,
   };
+}
+
+/** Owner-friendly slug: falls back to the product name so the owner never has to think about URLs. */
+export function menuSlug(preferred: string, name: string): string {
+  const clean = (v: string) =>
+    v
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  return clean(preferred) || clean(name) || `item-${Date.now().toString(36)}`;
 }

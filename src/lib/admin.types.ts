@@ -7,6 +7,10 @@ export type AdminMenuItem = {
   description: string;
   price: number;
   imageKey: string;
+  /** Product page web address. */
+  slug: string;
+  galleryKeys: string[];
+  videoUrl: string;
   tag: string | null;
   active: boolean;
   featured: boolean;

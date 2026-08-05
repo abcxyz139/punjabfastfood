@@ -58,10 +58,16 @@ export type MenuAddon = {
 
 export type PublicMenuItem = {
   id: string;
+  /** URL-friendly product page address, e.g. "zinger-burger". */
+  slug: string;
   name: string;
   description: string;
   price: number;
   imageKey: string;
+  /** Extra photos shown in the product page swipe gallery. */
+  galleryKeys: string[];
+  /** Optional product video URL; empty string hides the player. */
+  videoUrl: string;
   tag: string | null;
   category: string;
   categoryId: string | null;

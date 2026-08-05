@@ -5,6 +5,8 @@ import type { PublicMenuSnapshot, PublicMenuItem, ProductType } from "./menu.typ
 export type PublicSettings = {
   restaurantName: string;
   whatsappNumber: string;
+  /** Owner's call-us number, dialled by the Call buttons. */
+  phone: string;
   deliveryCharges: number;
   minOrder: number;
   /** Owner-controlled Open/Closed switch from Admin → Settings. */
@@ -21,7 +23,7 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
     const { data, error } = await supabase
       .from("business_settings")
       .select(
-        "restaurant_name, whatsapp_number, delivery_charges, min_order, is_open, closed_message, announcement, announcement_active",
+        "restaurant_name, whatsapp_number, phone, delivery_charges, min_order, is_open, closed_message, announcement, announcement_active",
       )
       .eq("id", "default")
       .maybeSingle();
@@ -29,6 +31,7 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
     return {
       restaurantName: data?.restaurant_name ?? "Punjab Fast Food",
       whatsappNumber: data?.whatsapp_number ?? "923017160216",
+      phone: data?.phone ?? data?.whatsapp_number ?? "923017160216",
       deliveryCharges: Number(data?.delivery_charges ?? 2.5),
       minOrder: Number(data?.min_order ?? 0),
       isOpen: data?.is_open ?? true,
@@ -51,7 +54,7 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
     supabase
       .from("menu_items")
       .select(
-        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
+        "id,slug,gallery_keys,video_url,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
       )
 
       .eq("active", true)
@@ -120,10 +123,13 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
       const cat = (i.category_id ? catById.get(i.category_id) : undefined) ?? catByName.get(i.category.toLowerCase());
       return {
         id: i.id,
+        slug: i.slug ?? i.id,
         name: i.name,
         description: i.description,
         price: Number(i.price),
         imageKey: i.image_key,
+        galleryKeys: i.gallery_keys ?? [],
+        videoUrl: i.video_url ?? "",
         tag: i.tag,
         category: i.category,
         categoryId: i.category_id,
