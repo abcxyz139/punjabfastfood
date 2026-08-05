@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
@@ -541,12 +541,10 @@ function Menu() {
 function MenuCard({
   item,
   index,
-  onOpenOptions,
   promoBadges = {},
 }: {
   item: PublicMenuItem;
   index: number;
-  onOpenOptions: () => void;
   promoBadges?: Parameters<typeof PromoBadges>[0]["badges"];
 }) {
   const hasVariants = item.variants.length > 0;
@@ -613,12 +611,11 @@ function MenuCard({
           ))}
         </div>
       )}
-      <button
-        type="button"
-        onClick={servable ? onOpenOptions : undefined}
-        disabled={!servable}
+      <Link
+        to="/menu/$slug"
+        params={{ slug: item.slug }}
         aria-label={`View details for ${item.name}, ${priceLabel}`}
-        className="block w-full text-left disabled:cursor-not-allowed"
+        className="block w-full text-left"
       >
         {/* Image first: photos sell food. */}
         <div className="aspect-square mb-3 sm:mb-5 overflow-hidden bg-stone-100 ring-1 ring-black/5 relative">
@@ -642,7 +639,7 @@ function MenuCard({
         {/* Price is the second thing a customer looks at, so it leads the text block. */}
         <div className="font-mono text-lg sm:text-xl font-bold leading-none mb-1">{priceLabel}</div>
         <h3 className="font-display text-lg sm:text-2xl uppercase leading-none line-clamp-2">{item.name}</h3>
-      </button>
+      </Link>
       {item.description && (
         <p className="hidden sm:block text-xs text-brand-black/60 leading-relaxed mt-2 line-clamp-1">{item.description}</p>
       )}
@@ -669,12 +666,13 @@ function MenuCard({
             {ctaLabel}
           </button>
         ) : needsOptions ? (
-          <button
-            onClick={onOpenOptions}
+          <Link
+            to="/menu/$slug"
+            params={{ slug: item.slug }}
             className="w-full min-h-12 bg-brand-black text-white text-[11px] font-bold uppercase tracking-widest sm:group-hover:bg-brand-red transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             <Settings2 className="size-4" /> {item.productType === "combo" ? "Order Deal" : "Choose"}
-          </button>
+          </Link>
         ) : (
           <button
             onClick={handleQuickAdd}
