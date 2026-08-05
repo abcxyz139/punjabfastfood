@@ -23,6 +23,18 @@ export const Route = createFileRoute("/sitemap.xml")({
           // A database hiccup must never break the sitemap — serve the homepage entry.
         }
 
+        try {
+          const { data } = await publicClient()
+            .from("menu_items")
+            .select("slug")
+            .eq("active", true);
+          for (const row of data ?? []) {
+            if (row.slug) urls.push({ loc: `${SITE_URL}/menu/${row.slug}`, priority: "0.8" });
+          }
+        } catch {
+          // Product pages are optional in the sitemap; never fail the response.
+        }
+
         const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls
