@@ -5,6 +5,8 @@ import type { PublicMenuSnapshot, PublicMenuItem, ProductType } from "./menu.typ
 export type PublicSettings = {
   restaurantName: string;
   whatsappNumber: string;
+  /** Owner's call-us number, dialled by the Call buttons. */
+  phone: string;
   deliveryCharges: number;
   minOrder: number;
   /** Owner-controlled Open/Closed switch from Admin → Settings. */
@@ -21,7 +23,7 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
     const { data, error } = await supabase
       .from("business_settings")
       .select(
-        "restaurant_name, whatsapp_number, delivery_charges, min_order, is_open, closed_message, announcement, announcement_active",
+        "restaurant_name, whatsapp_number, phone, delivery_charges, min_order, is_open, closed_message, announcement, announcement_active",
       )
       .eq("id", "default")
       .maybeSingle();
@@ -29,6 +31,7 @@ export const getPublicSettings = createServerFn({ method: "GET" }).handler(
     return {
       restaurantName: data?.restaurant_name ?? "Punjab Fast Food",
       whatsappNumber: data?.whatsapp_number ?? "923017160216",
+      phone: data?.phone ?? data?.whatsapp_number ?? "923017160216",
       deliveryCharges: Number(data?.delivery_charges ?? 2.5),
       minOrder: Number(data?.min_order ?? 0),
       isOpen: data?.is_open ?? true,
