@@ -546,7 +546,7 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
   const [editing, setEditing] = useState<Partial<AdminMenuItem> & { id?: string }>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null, badges: [], searchKeywords: [], spiceLevel: 0, inStock: true, availability: { days: [], from: null, until: null }, prepTimeMinutes: null, recommendedIds: [], frequentlyBoughtIds: [], mealUpgradeIds: [], mealUpgradeLabel: "Complete your meal" });
+  const startNew = () => setEditing({ name: "", category: snapshot.categories[0]?.name ?? "Burgers", description: "", price: 0, imageKey: "", tag: "", active: true, featured: false, displayOrder: 100, productType: snapshot.categories[0]?.defaultProductType ?? "simple", variantLabel: "", addonLabel: "", variantRequired: true, maxAddons: null, badges: [], searchKeywords: [], spiceLevel: 0, inStock: true, availability: { days: [], from: null, until: null }, prepTimeMinutes: null, recommendedIds: [], frequentlyBoughtIds: [], mealUpgradeIds: [], mealUpgradeLabel: "Complete your meal", slug: "", galleryKeys: [], videoUrl: "" });
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
@@ -578,6 +578,9 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
       frequentlyBoughtIds: editing.frequentlyBoughtIds ?? [],
       mealUpgradeIds: editing.mealUpgradeIds ?? [],
       mealUpgradeLabel: editing.mealUpgradeLabel || "Complete your meal",
+      slug: editing.slug ?? "",
+      galleryKeys: editing.galleryKeys ?? [],
+      videoUrl: editing.videoUrl ?? "",
     };
 
     await runAction(
@@ -757,7 +760,59 @@ function MenuTab({ snapshot, refresh, setMessage, saving, setSaving }: { snapsho
 
 
 
-            <Advanced title="Upsells shown in the product popup">
+            <Advanced title="Product page: extra photos, video & web address">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-brand-black/40">
+                Every product has its own page customers can share. Extra photos become a swipe gallery.
+              </p>
+              <Field label="Extra photos (swipe gallery)">
+                <div className="space-y-2">
+                  {(editing.galleryKeys ?? []).map((k, idx) => (
+                    <div key={`${k}-${idx}`} className="flex items-center gap-2">
+                      <img src={k} alt="" className="size-14 object-cover border border-brand-black/10" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            galleryKeys: (editing.galleryKeys ?? []).filter((_, i) => i !== idx),
+                          })
+                        }
+                        className="min-h-10 px-3 text-[10px] font-bold uppercase border border-brand-black/10 hover:border-brand-red"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  {(editing.galleryKeys ?? []).length < 6 && (
+                    <ImageUploader
+                      value=""
+                      onChange={(v) =>
+                        setEditing({ ...editing, galleryKeys: [...(editing.galleryKeys ?? []), v] })
+                      }
+                      setMessage={setMessage}
+                    />
+                  )}
+                </div>
+              </Field>
+              <Field label="Video link (optional)">
+                <TextInput
+                  placeholder="https://…/dish.mp4"
+                  value={editing.videoUrl ?? ""}
+                  onChange={(e) => setEditing({ ...editing, videoUrl: e.target.value })}
+                />
+              </Field>
+              <Field label="Web address (leave blank to use the product name)">
+                <TextInput
+                  placeholder="zinger-burger"
+                  value={editing.slug ?? ""}
+                  onChange={(e) =>
+                    setEditing({ ...editing, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })
+                  }
+                />
+              </Field>
+            </Advanced>
+
+            <Advanced title="Upsells shown on the product page">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Prep time in minutes (blank = hidden)">
                   <TextInput
