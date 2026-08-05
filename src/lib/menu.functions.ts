@@ -51,7 +51,7 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
     supabase
       .from("menu_items")
       .select(
-        "id,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
+        "id,slug,gallery_keys,video_url,name,description,price,image_key,tag,category,category_id,display_order,featured,product_type,variant_label,addon_label,variant_required,max_addons,badges,search_keywords,spice_level,in_stock,available_days,available_from,available_until,prep_time_minutes,recommended_ids,frequently_bought_ids,meal_upgrade_ids,meal_upgrade_label",
       )
 
       .eq("active", true)
@@ -120,10 +120,13 @@ export const getPublicMenu = createServerFn({ method: "GET" }).handler(async ():
       const cat = (i.category_id ? catById.get(i.category_id) : undefined) ?? catByName.get(i.category.toLowerCase());
       return {
         id: i.id,
+        slug: i.slug ?? i.id,
         name: i.name,
         description: i.description,
         price: Number(i.price),
         imageKey: i.image_key,
+        galleryKeys: i.gallery_keys ?? [],
+        videoUrl: i.video_url ?? "",
         tag: i.tag,
         category: i.category,
         categoryId: i.category_id,
